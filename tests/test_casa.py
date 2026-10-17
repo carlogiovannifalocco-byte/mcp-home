@@ -158,3 +158,9 @@ def test_tools_over_http_are_scoped_per_household(server):
     assert call(server, "tok-rossi", "get_grocery_list")["count"] == 1
     assert call(server, "tok-bianchi", "get_grocery_list")["count"] == 0
     assert "speech" in call(server, "tok-rossi", "weekly_briefing")
+
+
+def test_negotiates_2025_11_25_protocol(server):
+    params = {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "t", "version": "1"}}
+    r = rpc(server, "tok-rossi", "initialize", params)
+    assert r.json()["result"]["protocolVersion"] == "2025-11-25"

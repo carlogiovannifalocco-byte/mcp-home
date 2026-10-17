@@ -37,7 +37,7 @@ flowchart LR
   S -- do_from_sentence --> B[Amazon Bedrock<br/>Converse API, forced tool use]
 ```
 
-- **Transport**: MCP Streamable HTTP at `/mcp`, stateless JSON responses, built on the official Python SDK (`mcp` 2.x).
+- **Transport**: MCP Streamable HTTP at `/mcp`, stateless JSON responses, built on the official Python SDK (`mcp` 2.x). Tested to negotiate protocol version 2025-11-25, the minimum the Alexa+ track asks for.
 - **Households**: every bearer token maps to one household (`HOUSEHOLD_TOKENS="token:household,..."`). Every query filters by household; tokens are compared in constant time. A request without a valid token gets `401`.
 - **Bedrock**: `do_from_sentence` calls the Bedrock Converse API with a single forced tool (`plan_actions`) whose JSON schema only allows the four write actions, and passes today's date so "Friday" resolves to a real date. The actions are then validated and executed by the same code the individual tools use, so the model can never write anything the tools could not.
 
