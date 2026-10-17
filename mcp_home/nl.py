@@ -22,7 +22,8 @@ ACTION_TOOL = {
                                 "args": {
                                     "type": "object",
                                     "description": "add_grocery_item: item, quantity. add_bill: provider, amount, due "
-                                    "(YYYY-MM-DD). log_chore: chore, person. add_pantry_item: item, expires (YYYY-MM-DD).",
+                                    "(YYYY-MM-DD), optional repeat (weekly, monthly, bimonthly, quarterly, yearly). "
+                                    "log_chore: chore, person. add_pantry_item: item, expires (YYYY-MM-DD).",
                                 },
                             },
                             "required": ["tool", "args"],

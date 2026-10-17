@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import os
 import secrets
+from urllib.parse import urlsplit
 
 from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.auth.provider import AccessToken
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
+from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 
-from . import logic
+from . import api, logic
 from .nl import plan_from_sentence
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True)
@@ -40,6 +42,22 @@ def household() -> str:
 
 PUBLIC_URL = os.getenv("PUBLIC_URL", "http://localhost:8000")
 
+
+def transport_security(public_url: str = PUBLIC_URL) -> TransportSecuritySettings:
+    """DNS-rebinding protection that accepts localhost and the public host the server is deployed under.
+
+    Without this the SDK only allows localhost Host headers, so a deployed /mcp would answer 421.
+    """
+    hosts = ["127.0.0.1:*", "localhost:*", "[::1]:*"]
+    origins = ["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"]
+    parts = urlsplit(public_url)
+    if parts.hostname and parts.hostname not in ("127.0.0.1", "localhost", "::1"):
+        hosts += [parts.netloc, f"{parts.hostname}:*"]
+        origins.append(f"{parts.scheme}://{parts.netloc}")
+    hosts += [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
+    return TransportSecuritySettings(enable_dns_rebinding_protection=True, allowed_hosts=hosts, allowed_origins=origins)
+
+
 mcp = MCPServer(
     name="mcp-home",
     title="Home",
@@ -47,7 +65,7 @@ mcp = MCPServer(
         "Home keeps one household's shared shopping list, bills, chores and pantry. "
         "Prefer short spoken answers. Amounts are in euro. Dates can be ISO or words like 'tomorrow' or 'in 3 days'."
     ),
-    version="0.1.0",
+    version="0.2.0",
     token_verifier=HouseholdTokenVerifier(),
     auth=AuthSettings(issuer_url=PUBLIC_URL, resource_server_url=f"{PUBLIC_URL}/mcp", required_scopes=["household"], validate_token_resource=False),
 )
@@ -72,14 +90,15 @@ def check_off_grocery_item(item: str) -> dict:
 
 
 @mcp.tool()
-def add_bill(provider: str, amount: float, due: str) -> dict:
-    """Record a bill to pay. `due` is YYYY-MM-DD or words like 'tomorrow' or 'in 10 days'."""
-    return logic.add_bill(household(), provider, amount, due)
+def add_bill(provider: str, amount: float, due: str, repeat: str = "") -> dict:
+    """Record a bill to pay. `due` is YYYY-MM-DD or words like 'tomorrow' or 'in 10 days'.
+    `repeat` is optional: weekly, monthly, bimonthly, quarterly or yearly; paying it schedules the next one."""
+    return logic.add_bill(household(), provider, amount, due, repeat=repeat)
 
 
 @mcp.tool()
 def mark_bill_paid(provider: str) -> dict:
-    """Mark the oldest unpaid bill from this provider as paid."""
+    """Mark the oldest unpaid bill from this provider as paid (recurring bills get their next due date)."""
     return logic.pay_bill(household(), provider)
 
 
@@ -90,9 +109,10 @@ def upcoming_deadlines(days: int = 14) -> dict:
 
 
 @mcp.tool()
-def log_chore(chore: str, person: str) -> dict:
-    """Record that someone did a chore today (for example 'trash', 'dishes', 'laundry')."""
-    return logic.log_chore(household(), chore, person)
+def log_chore(chore: str, person: str, when: str = "today") -> dict:
+    """Record that someone did a chore (for example 'trash', 'dishes', 'laundry').
+    `when` defaults to today; 'yesterday', '2 days ago' or YYYY-MM-DD also work."""
+    return logic.log_chore(household(), chore, person, when=when)
 
 
 @mcp.tool(annotations=READ_ONLY)
@@ -105,6 +125,24 @@ def whose_turn(chore: str) -> dict:
 def add_pantry_item(item: str, expires: str) -> dict:
     """Track a food item in the pantry or fridge with its expiry date."""
     return logic.add_pantry(household(), item, expires)
+
+
+@mcp.tool(annotations=READ_ONLY)
+def household_members() -> dict:
+    """Who lives here, i.e. who takes part in the chore rotation."""
+    return logic.list_members(household())
+
+
+@mcp.tool()
+def add_household_member(person: str) -> dict:
+    """Add someone to the household so they join the chore rotation."""
+    return logic.add_member(household(), person)
+
+
+@mcp.tool()
+def remove_household_member(person: str) -> dict:
+    """Take someone out of the chore rotation (for example after they move out). Their history is kept."""
+    return logic.remove_member(household(), person)
 
 
 @mcp.tool(annotations=READ_ONLY)
@@ -133,7 +171,7 @@ def do_from_sentence(sentence: str) -> dict:
     actions = plan_from_sentence(sentence)
     runners = {
         "add_grocery_item": lambda a: logic.add_grocery(hh, a["item"], a.get("quantity", "")),
-        "add_bill": lambda a: logic.add_bill(hh, a["provider"], float(a["amount"]), a["due"]),
+        "add_bill": lambda a: logic.add_bill(hh, a["provider"], float(a["amount"]), a["due"], repeat=a.get("repeat", "")),
         "log_chore": lambda a: logic.log_chore(hh, a["chore"], a["person"]),
         "add_pantry_item": lambda a: logic.add_pantry(hh, a["item"], a["expires"]),
     }
@@ -153,7 +191,8 @@ def briefing_resource() -> dict:
     return logic.weekly_briefing(household())
 
 
-app = mcp.streamable_http_app(stateless_http=True, json_response=True)
+api.register(mcp)
+app = mcp.streamable_http_app(stateless_http=True, json_response=True, transport_security=transport_security())
 
 
 def main() -> None:

@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<title>mcp-home dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b4532a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f5f1ea;
+  --surface: #ffffff;
+  --surface-2: #f3eee6;
+  --surface-3: #ebe4d9;
+  --text: #1f1a15;
+  --muted: #6c6257;
+  --faint: #978c80;
+  --border: #e5ddd1;
+  --accent: #b4532a;
+  --accent-strong: #9a4321;
+  --accent-soft: #f7e6dc;
+  --accent-ink: #ffffff;
+  --hero: linear-gradient(135deg, #fff8f1 0%, #fbeee4 100%);
+  --hero-border: #efd9ca;
+  --ok: #2c7a4b;
+  --ok-soft: #e3f2e8;
+  --warn: #9a5b00;
+  --warn-soft: #fdf0d7;
+  --danger: #b42318;
+  --danger-soft: #fde7e4;
+  --shadow: 0 1px 2px rgba(60, 40, 20, .05), 0 4px 16px rgba(60, 40, 20, .05);
+  --focus: 0 0 0 3px rgba(180, 83, 42, .35);
+  --av-1: #b4532a; --av-2: #2c6e8f; --av-3: #6b5bb5; --av-4: #2c7a4b; --av-5: #a3375f; --av-6: #8a6d1d;
+  --radius: 16px;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, ui-serif, serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141210;
+    --surface: #1d1a17;
+    --surface-2: #25211d;
+    --surface-3: #2e2924;
+    --text: #f2ece4;
+    --muted: #b0a598;
+    --faint: #857a6e;
+    --border: #36302a;
+    --accent: #e8875c;
+    --accent-strong: #f19a72;
+    --accent-soft: #3a261c;
+    --accent-ink: #1b120d;
+    --hero: linear-gradient(135deg, #2a1f18 0%, #221a15 100%);
+    --hero-border: #44322a;
+    --ok: #6fcf97;
+    --ok-soft: #1c3226;
+    --warn: #f0b44c;
+    --warn-soft: #3a2e17;
+    --danger: #ff8a7a;
+    --danger-soft: #3d1f1b;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .25);
+    --focus: 0 0 0 3px rgba(232, 135, 92, .45);
+    --av-1: #e8875c; --av-2: #5fb3d9; --av-3: #a596ec; --av-4: #6fcf97; --av-5: #ec84ad; --av-6: #d9b453;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141210; --surface: #1d1a17; --surface-2: #25211d; --surface-3: #2e2924; --text: #f2ece4; --muted: #b0a598;
+  --faint: #857a6e; --border: #36302a; --accent: #e8875c; --accent-strong: #f19a72; --accent-soft: #3a261c;
+  --accent-ink: #1b120d; --hero: linear-gradient(135deg, #2a1f18 0%, #221a15 100%); --hero-border: #44322a;
+  --ok: #6fcf97; --ok-soft: #1c3226; --warn: #f0b44c; --warn-soft: #3a2e17; --danger: #ff8a7a; --danger-soft: #3d1f1b;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .25); --focus: 0 0 0 3px rgba(232, 135, 92, .45);
+  --av-1: #e8875c; --av-2: #5fb3d9; --av-3: #a596ec; --av-4: #6fcf97; --av-5: #ec84ad; --av-6: #d9b453;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans);
+  -webkit-font-smoothing: antialiased; min-height: 100vh;
+}
+[hidden] { display: none !important; }
+button, input, select { font: inherit; color: inherit; }
+a { color: var(--accent-strong); }
+code, .mono { font-family: var(--mono); font-size: .86em; }
+.ic { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+:focus-visible { outline: none; box-shadow: var(--focus); }
+
+.wrap { max-width: 1200px; margin: 0 auto; padding: 20px 24px 48px; }
+
+/* Buttons and fields */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 14px;
+  border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s;
+}
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+.btn.ghost:hover { background: var(--surface-2); color: var(--text); }
+.btn.small { min-height: 34px; padding: 0 11px; font-size: 13px; border-radius: 9px; }
+.btn:disabled { opacity: .55; cursor: progress; }
+.field {
+  min-height: 42px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface);
+  min-width: 0; width: 100%;
+}
+.field:focus { border-color: var(--accent); box-shadow: var(--focus); outline: none; }
+select.field { padding-right: 8px; }
+input[type="date"].field { padding-right: 8px; }
+label.lbl { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 4px; }
+
+/* Header */
+.top { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; }
+.brand-mark { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); }
+.brand-mark .ic { width: 20px; height: 20px; stroke-width: 2.2; }
+.hh { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--muted); }
+.hh b { color: var(--text); text-transform: capitalize; }
+.top .spacer { flex: 1; }
+.top .date { color: var(--muted); font-size: 14px; }
+
+/* Hero */
+.hero {
+  background: var(--hero); border: 1px solid var(--hero-border); border-radius: 20px; padding: 26px 28px 22px;
+  box-shadow: var(--shadow); margin-bottom: 20px;
+}
+.eyebrow { display: flex; align-items: center; gap: 8px; color: var(--accent-strong); font-weight: 700; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+.eyebrow .pulse { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); }
+.eyebrow .pulse .ic { width: 15px; height: 15px; }
+.ask { color: var(--muted); font-size: 14px; margin: 6px 0 0; }
+.speech { font-family: var(--serif); font-size: clamp(22px, 2.6vw, 31px); line-height: 1.3; margin: 14px 0 20px; letter-spacing: -.005em; max-width: 60ch; text-wrap: pretty; }
+.speech::before { content: "\201C"; color: var(--accent); margin-right: 2px; }
+.speech::after { content: "\201D"; color: var(--accent); margin-left: 2px; }
+.hero-foot { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; flex: 1 1 520px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; min-width: 0; }
+.stat .k { font-size: 12px; color: var(--muted); font-weight: 600; }
+.stat .v { font-size: 22px; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.stat .s { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat .s.bad { color: var(--danger); font-weight: 600; }
+.hero-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.updated { font-size: 12.5px; color: var(--faint); }
+
+/* Cards */
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.nowrap { white-space: nowrap; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px 20px; min-width: 0; }
+.card.wide { grid-column: 1 / -1; }
+.card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.card-h h2 { font-size: 17px; margin: 0; letter-spacing: -.01em; }
+.card-h .chip-ic { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-strong); }
+.card-h .meta { margin-left: auto; color: var(--muted); font-size: 13px; text-align: right; }
+.card-h .meta b { color: var(--text); font-variant-numeric: tabular-nums; }
+.count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 700; }
+
+.row-form { display: flex; gap: 8px; margin-bottom: 14px; }
+.row-form .grow { flex: 1 1 auto; }
+.row-form .qty { flex: 0 0 96px; }
+
+details.adder { margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 10px; }
+details.adder > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; color: var(--accent-strong); padding: 6px 4px; border-radius: 8px; }
+details.adder > summary::-webkit-details-marker { display: none; }
+details.adder[open] > summary .ic { transform: rotate(45deg); }
+details.adder > summary .ic { transition: transform .15s; width: 16px; height: 16px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+.form-grid .full { grid-column: 1 / -1; }
+.form-grid .actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; }
+
+ul.list { list-style: none; margin: 0; padding: 0; }
+.empty { color: var(--muted); font-size: 14px; padding: 14px; text-align: center; background: var(--surface-2); border-radius: 12px; }
+
+/* Shopping */
+.aisle + .aisle { margin-top: 12px; }
+.aisle-h { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+.aisle-h::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.check { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 4px 8px; margin: 0 -8px; border-radius: 10px; cursor: pointer; }
+.check:hover { background: var(--surface-2); }
+.check input { appearance: none; -webkit-appearance: none; width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--faint); margin: 0; flex: none; display: grid; place-items: center; cursor: pointer; background: var(--surface); }
+.check input:checked { background: var(--ok); border-color: var(--ok); }
+.check input:checked::after { content: ""; width: 6px; height: 11px; border: solid var(--surface); border-width: 0 2.5px 2.5px 0; transform: translate(0, -1px) rotate(45deg); }
+.check .name { flex: 1; min-width: 0; }
+.check .qty { color: var(--muted); font-variant-numeric: tabular-nums; }
+.check .by { font-size: 12.5px; color: var(--faint); white-space: nowrap; }
+.check.done .name { text-decoration: line-through; color: var(--faint); }
+
+/* Rows (bills, pantry, chores) */
+.row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); min-height: 56px; }
+.list > .row:first-child { border-top: 0; }
+.row .main { flex: 1; min-width: 0; }
+.row .title { font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.row .sub { font-size: 13px; color: var(--muted); }
+.row .amt { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row.overdue .sub { color: var(--danger); font-weight: 600; }
+.tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.tag .ic { width: 12px; height: 12px; }
+.badge { display: inline-flex; align-items: center; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.badge.danger { background: var(--danger-soft); color: var(--danger); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
+.badge.ok { background: var(--ok-soft); color: var(--ok); }
+.total-line { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 12px; margin-bottom: 4px; background: var(--surface-2); border-radius: 10px; font-size: 13.5px; color: var(--muted); }
+.total-line b { font-size: 18px; color: var(--text); font-variant-numeric: tabular-nums; }
+.total-line .bad { color: var(--danger); font-weight: 700; }
+
+/* Chores */
+.avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13px; color: #fff; flex: none; background: var(--av, var(--av-1)); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .avatar { color: #15110e; } }
+:root[data-theme="dark"] .avatar { color: #15110e; }
+.next-up { font-size: 12px; color: var(--muted); font-weight: 600; }
+.next-up b { color: var(--text); font-size: 15px; display: block; line-height: 1.2; }
+.chore-name { text-transform: capitalize; }
+.members { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
+.member { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 4px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); font-size: 13.5px; font-weight: 600; }
+.member .avatar { width: 24px; height: 24px; font-size: 11px; }
+.member button { width: 24px; height: 24px; border-radius: 50%; border: 0; background: transparent; color: var(--faint); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.member button:hover { background: var(--surface-3); color: var(--danger); }
+.member button .ic { width: 13px; height: 13px; }
+.sub-h { font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 16px 0 6px; }
+.member-form { display: inline-flex; gap: 6px; }
+.member-form .field { width: 150px; min-height: 34px; border-radius: 999px; font-size: 13.5px; }
+
+/* Connect */
+.connect-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 24px; }
+.kv { margin-bottom: 14px; }
+.copybox { display: flex; align-items: center; gap: 6px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 4px 4px 4px 12px; min-height: 44px; }
+.copybox code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-size: 13.5px; scrollbar-width: thin; }
+ol.steps { margin: 0; padding: 0; list-style: none; counter-reset: s; }
+ol.steps li { counter-increment: s; position: relative; padding: 0 0 12px 36px; }
+ol.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-strong); font-weight: 700; font-size: 12.5px; display: grid; place-items: center; }
+ol.steps code { background: var(--surface-2); border: 1px solid var(--border); padding: 1px 6px; border-radius: 6px; overflow-wrap: anywhere; }
+.note { font-size: 13.5px; color: var(--muted); }
+.note.warn { color: var(--warn); background: var(--warn-soft); padding: 8px 12px; border-radius: 10px; margin: 0 0 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tools .t { font-family: var(--mono); font-size: 12px; padding: 3px 8px; border-radius: 7px; background: var(--surface-2); border: 1px solid var(--border); }
+.tools .t.ro { color: var(--ok); }
+.legend { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.legend span { color: var(--ok); font-family: var(--mono); }
+
+/* Login */
+.login { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+.login .box { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); padding: 28px; }
+.login h1 { font-size: 22px; margin: 16px 0 6px; letter-spacing: -.01em; }
+.login p { color: var(--muted); margin: 0 0 18px; }
+.login .err { color: var(--danger); font-weight: 600; font-size: 14px; margin: 10px 0 0; min-height: 1.4em; }
+.login .btn { width: 100%; margin-top: 14px; min-height: 44px; }
+.pw { position: relative; }
+.pw .field { padding-right: 46px; }
+.pw button { position: absolute; right: 4px; top: 4px; width: 36px; height: 34px; border: 0; background: transparent; color: var(--muted); border-radius: 8px; cursor: pointer; display: grid; place-items: center; }
+
+/* Toast */
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 600; font-size: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; max-width: calc(100vw - 32px); z-index: 10; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.error { background: var(--danger); color: #fff; }
+
+footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 12.5px; }
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .col { display: contents; }
+  .c-shop { order: 1; } .c-bills { order: 2; } .c-chores { order: 3; } .c-pantry { order: 4; } .c-connect { order: 5; }
+  .connect-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .wrap { padding: 14px 16px 40px; }
+  .top { gap: 8px; }
+  .top .date { order: 3; width: 100%; font-size: 13px; }
+  .brand span.word { display: none; }
+  .hero { padding: 20px 18px 18px; border-radius: 18px; }
+  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; flex-basis: 100%; }
+  .stat { padding: 8px 10px; }
+  .stat .v { font-size: 18px; }
+  .stat .k { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat .s { display: none; }
+  .card { padding: 16px; }
+  .row-form .qty { flex-basis: 72px; }
+  .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .card-h .meta { font-size: 12px; }
+  .btn.hide-sm span { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+  <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></symbol>
+  <symbol id="i-bill" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05M12 22.08V12"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 1 4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></symbol>
+</svg>
+
+<!-- Sign in -->
+<div id="login" class="login" hidden>
+  <form class="box" id="login-form" autocomplete="off">
+    <div class="brand"><div class="brand-mark"><svg class="ic"><use href="#i-home"/></svg></div>mcp-home</div>
+    <h1>Open your household</h1>
+    <p>Enter the household token, the part before the colon in <code>HOUSEHOLD_TOKENS</code>. It is the same bearer token Alexa+ uses and it stays in this browser.</p>
+    <label class="lbl" for="token-input">Household token</label>
+    <div class="pw">
+      <input id="token-input" class="field" type="password" required spellcheck="false" autocapitalize="off" aria-describedby="login-err">
+      <button type="button" id="token-peek" aria-label="Show token" aria-pressed="false"><svg class="ic"><use href="#i-eye"/></svg></button>
+    </div>
+    <p class="err" id="login-err" role="alert"></p>
+    <button class="btn primary" type="submit">Open dashboard</button>
+  </form>
+</div>
+
+<!-- Dashboard -->
+<div id="app" hidden>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand"><div class="brand-mark"><svg class="ic"><use href="#i-home"/></svg></div><span class="word">mcp-home</span></div>
+      <span class="hh">Household <b id="hh-name"></b></span>
+      <span class="date" id="today"></span>
+      <span class="spacer"></span>
+      <button class="btn ghost small hide-sm" id="refresh" type="button" aria-label="Refresh"><svg class="ic"><use href="#i-refresh"/></svg><span>Refresh</span></button>
+      <button class="btn ghost small hide-sm" id="signout" type="button" aria-label="Sign out"><svg class="ic"><use href="#i-out"/></svg><span>Sign out</span></button>
+    </header>
+
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="eyebrow" id="hero-title"><span class="pulse"><svg class="ic"><use href="#i-speaker"/></svg></span>What Alexa will say</div>
+      <p class="ask">When someone asks "Alexa, what do we need to deal with this week?" (the <code>weekly_briefing</code> tool)</p>
+      <p class="speech" id="speech" aria-live="polite"></p>
+      <div class="hero-foot">
+        <div class="stats" id="stats"></div>
+        <div class="hero-actions">
+          <button class="btn primary" id="speak" type="button"><svg class="ic"><use href="#i-speaker"/></svg>Read aloud</button>
+          <span class="updated" id="updated"></span>
+        </div>
+      </div>
+    </section>
+
+    <main class="grid">
+      <div class="col">
+      <!-- Shopping -->
+      <section class="card c-shop" aria-labelledby="shop-h">
+        <div class="card-h">
+          <span class="chip-ic"><svg class="ic"><use href="#i-cart"/></svg></span>
+          <h2 id="shop-h">Shopping list</h2><span class="count" id="shop-count">0</span>
+          <span class="meta">in supermarket order</span>
+        </div>
+        <form class="row-form" id="shop-form">
+          <label class="sr-only" for="shop-item">Item</label>
+          <input class="field grow" id="shop-item" placeholder="Add an item, e.g. latte" maxlength="120" required>
+          <label class="sr-only" for="shop-qty">Quantity</label>
+          <input class="field qty" id="shop-qty" placeholder="Qty" maxlength="40">
+          <button class="btn primary" type="submit" aria-label="Add to shopping list"><svg class="ic"><use href="#i-plus"/></svg></button>
+        </form>
+        <div id="shop-list"></div>
+      </section>
+
+      <!-- Chores -->
+      <section class="card c-chores" aria-labelledby="chores-h">
+        <div class="card-h">
+          <span class="chip-ic"><svg class="ic"><use href="#i-rotate"/></svg></span>
+          <h2 id="chores-h">Chores</h2>
+          <span class="meta">fair rotation: least recent goes next</span>
+        </div>
+        <ul class="list" id="chores-list"></ul>
+        <div class="sub-h">Who lives here</div>
+        <div class="members" id="members">
+        </div>
+        <details class="adder">
+          <summary><svg class="ic"><use href="#i-plus"/></svg>Log a chore</summary>
+          <form id="chore-form" class="form-grid">
+            <div class="full"><label class="lbl" for="chore-name">Chore</label><input class="field" id="chore-name" list="chore-options" placeholder="e.g. trash, dishes, laundry" maxlength="60" required>
+              <datalist id="chore-options"></datalist></div>
+            <div><label class="lbl" for="chore-person">Done by</label><input class="field" id="chore-person" list="member-options" maxlength="40" required><datalist id="member-options"></datalist></div>
+            <div><label class="lbl" for="chore-when">When</label>
+              <select class="field" id="chore-when"><option value="today">Today</option><option value="yesterday">Yesterday</option><option value="2 days ago">2 days ago</option></select></div>
+            <div class="actions"><button class="btn primary" type="submit">Log chore</button></div>
+          </form>
+        </details>
+      </section>
+
+      </div>
+      <div class="col">
+      <!-- Bills -->
+      <section class="card c-bills" aria-labelledby="bills-h">
+        <div class="card-h">
+          <span class="chip-ic"><svg class="ic"><use href="#i-bill"/></svg></span>
+          <h2 id="bills-h">Bills</h2><span class="count" id="bills-count">0</span>
+          <span class="meta">next 31 days</span>
+        </div>
+        <div id="bills-total"></div>
+        <ul class="list" id="bills-list"></ul>
+        <details class="adder">
+          <summary><svg class="ic"><use href="#i-plus"/></svg>Add a bill</summary>
+          <form id="bill-form" class="form-grid">
+            <div class="full"><label class="lbl" for="bill-provider">Provider</label><input class="field" id="bill-provider" placeholder="e.g. Enel gas" maxlength="120" required></div>
+            <div><label class="lbl" for="bill-amount">Amount (euro)</label><input class="field" id="bill-amount" inputmode="decimal" placeholder="80.00" required></div>
+            <div><label class="lbl" for="bill-due">Due</label><input class="field" id="bill-due" type="date" required></div>
+            <div class="full"><label class="lbl" for="bill-repeat">Repeats</label>
+              <select class="field" id="bill-repeat">
+                <option value="">Just once</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option>
+                <option value="bimonthly">Every two months</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option>
+              </select></div>
+            <div class="actions"><button class="btn primary" type="submit">Add bill</button></div>
+          </form>
+        </details>
+      </section>
+
+      <!-- Pantry -->
+      <section class="card c-pantry" aria-labelledby="pantry-h">
+        <div class="card-h">
+          <span class="chip-ic"><svg class="ic"><use href="#i-box"/></svg></span>
+          <h2 id="pantry-h">Pantry &amp; fridge</h2><span class="count" id="pantry-count">0</span>
+          <span class="meta">soonest first</span>
+        </div>
+        <ul class="list" id="pantry-list"></ul>
+        <details class="adder">
+          <summary><svg class="ic"><use href="#i-plus"/></svg>Add food</summary>
+          <form id="pantry-form" class="form-grid">
+            <div><label class="lbl" for="pantry-item">Food</label><input class="field" id="pantry-item" placeholder="e.g. mozzarella" maxlength="120" required></div>
+            <div><label class="lbl" for="pantry-exp">Expires</label><input class="field" id="pantry-exp" type="date" required></div>
+            <div class="actions"><button class="btn primary" type="submit">Add food</button></div>
+          </form>
+        </details>
+      </section>
+
+      </div>
+      <!-- Connect -->
+      <section class="card wide c-connect" aria-labelledby="connect-h">
+        <div class="card-h">
+          <span class="chip-ic"><svg class="ic"><use href="#i-link"/></svg></span>
+          <h2 id="connect-h">Connect to Alexa+ or any MCP client</h2>
+        </div>
+        <p class="note warn" id="local-warn" hidden>This endpoint is only reachable from this machine. Alexa+ needs a public HTTPS URL: deploy the server (see the README) and set <code>PUBLIC_URL</code>.</p>
+        <div class="connect-grid">
+          <div>
+            <div class="kv">
+              <label class="lbl">MCP endpoint (Streamable HTTP)</label>
+              <div class="copybox"><code id="mcp-url"></code><button class="btn small" type="button" data-copy="url"><svg class="ic"><use href="#i-copy"/></svg>Copy</button></div>
+            </div>
+            <div class="kv">
+              <label class="lbl">Authorization header</label>
+              <div class="copybox"><code>Bearer <span class="secret"></span></code>
+                <button class="btn small" type="button" id="reveal" aria-pressed="false"><svg class="ic"><use href="#i-eye"/></svg><span>Reveal</span></button>
+                <button class="btn small" type="button" data-copy="header"><svg class="ic"><use href="#i-copy"/></svg>Copy</button></div>
+            </div>
+            <label class="lbl">Tools Alexa can call (<span id="tool-count">0</span>)</label>
+            <div class="tools" id="tools"></div>
+            <div class="legend"><span>green</span> = read only (<code>readOnlyHint</code>), safe to call without asking</div>
+          </div>
+          <div>
+            <label class="lbl">Try it with the MCP Inspector</label>
+            <ol class="steps">
+              <li>Run <code>npx @modelcontextprotocol/inspector</code></li>
+              <li>Transport type <b>Streamable HTTP</b>, URL <code class="url-slot"></code></li>
+              <li>Add the header <code>Authorization</code> with value <code>Bearer <span class="secret"></span></code></li>
+              <li>Connect, then <b>List Tools</b> and call <code>weekly_briefing</code>: it returns the sentence above.</li>
+            </ol>
+            <label class="lbl">Alexa+</label>
+            <p class="note" style="margin-top:0">Register the endpoint as a remote MCP server following the Alexa+ MCP instructions for the Build, Ship, Shape hackathon, with this household token as the bearer credential. Everything Alexa adds shows up here within 30 seconds.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer>mcp-home · open source (MIT) · this page uses the same household logic as the MCP tools</footer>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+  const KEY = "mcp-home.token";
+  const NS = "http://www.w3.org/2000/svg";
+  const POLL_MS = 30000;
+  let token = "";
+  let S = null;
+  let revealed = false;
+  let timer = null;
+
+  // Storage can be unavailable (private mode, blocked site data): the page must work without it.
+  const store = {
+    get() { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } },
+    set(v) { try { localStorage.setItem(KEY, v); } catch (e) { /* session only */ } },
+    clear() { try { localStorage.removeItem(KEY); } catch (e) { /* nothing stored */ } },
+  };
+
+  const $ = (id) => document.getElementById(id);
+  function h(tag, props, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+      if (v == null || v === false) continue;
+      if (k === "class") n.className = v;
+      else if (k === "text") n.textContent = v;
+      else if (k === "style") n.setAttribute("style", v);
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? "" : v);
+    }
+    for (const kid of kids.flat()) {
+      if (kid == null || kid === false) continue;
+      n.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    }
+    return n;
+  }
+  function icon(name) {
+    const s = document.createElementNS(NS, "svg");
+    s.setAttribute("class", "ic"); s.setAttribute("aria-hidden", "true");
+    const u = document.createElementNS(NS, "use"); u.setAttribute("href", "#i-" + name);
+    s.append(u); return s;
+  }
+
+  // Dates are ISO strings from the server; compare them as calendar days.
+  const dayNum = (iso) => { const [y, m, d] = iso.split("-").map(Number); return Date.UTC(y, m - 1, d) / 86400000; };
+  const daysFrom = (iso) => dayNum(iso) - dayNum(S.today);
+  const asDate = (iso) => { const [y, m, d] = iso.split("-").map(Number); return new Date(y, m - 1, d); };
+  const fmtDate = (iso) => asDate(iso).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  const addDays = (iso, n) => { const d = asDate(iso); d.setDate(d.getDate() + n); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+  const euro = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR" });
+  const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  function ago(iso) {
+    const d = -daysFrom(iso);
+    return d <= 0 ? "today" : d === 1 ? "yesterday" : d + " days ago";
+  }
+  function avatar(name) {
+    let x = 0; for (const c of name) x = (x * 31 + c.charCodeAt(0)) >>> 0;
+    const initials = name.split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+    return h("span", { class: "avatar", style: "--av: var(--av-" + (x % 6 + 1) + ")", "aria-hidden": "true" }, initials);
+  }
+
+  let toastTimer = null;
+  function toast(msg, kind) {
+    const t = $("toast");
+    t.textContent = msg; t.className = "toast show" + (kind === "error" ? " error" : "");
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.className = "toast"; }, 2800);
+  }
+
+  async function call(method, path, body) {
+    const opts = { method, cache: "no-store", headers: { Authorization: "Bearer " + token } };
+    if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+    let res;
+    try { res = await fetch(path, opts); } catch (e) { throw new Error("Cannot reach the server. Check the connection."); }
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* empty body */ }
+    if (res.status === 401) { const err = new Error(data.error || "That token was not accepted."); err.auth = true; throw err; }
+    if (!res.ok) throw new Error(data.error || "Request failed (" + res.status + ").");
+    return data;
+  }
+  function fail(e) {
+    if (e.auth) signOut(e.message); else toast(e.message, "error");
+  }
+  async function act(method, path, body, describe, btn) {
+    if (btn) btn.disabled = true;
+    try {
+      const d = await call(method, path, body);
+      S = Object.assign({}, d.state, { connect: S.connect });
+      render(); stamp();
+      if (describe) toast(describe(d.result));
+      return d.result;
+    } catch (e) { fail(e); return null; } finally { if (btn) btn.disabled = false; }
+  }
+  async function refresh(quiet) {
+    try { S = await call("GET", "/api/state"); render(); stamp(); return true; }
+    catch (e) { if (!quiet || e.auth) fail(e); return false; }
+  }
+  function stamp() {
+    $("updated").textContent = "Updated " + new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  // Rendering -----------------------------------------------------------------
+  function render() {
+    $("hh-name").textContent = S.household;
+    $("today").textContent = asDate(S.today).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    renderHero(); renderShopping(); renderBills(); renderChores(); renderPantry(); renderConnect();
+    if (!$("bill-due").value) $("bill-due").value = addDays(S.today, 7);
+    if (!$("pantry-exp").value) $("pantry-exp").value = addDays(S.today, 3);
+  }
+
+  function renderHero() {
+    const b = S.briefing;
+    $("speech").textContent = b.speech;
+    const overdue = S.bills.bills.filter((x) => x.overdue).length;
+    const aisles = new Set(S.groceries.map((g) => g.aisle)).size;
+    const stat = (k, v, s, bad) => h("div", { class: "stat" }, h("div", { class: "k" }, k), h("div", { class: "v" }, v), h("div", { class: "s" + (bad ? " bad" : "") }, s));
+    $("stats").replaceChildren(
+      stat("Bills this week", euro.format(b.bills_total_this_week), overdue ? overdue + " overdue" : plural(b.bills_due_this_week, "bill"), overdue > 0),
+      stat("Use soon", String(b.use_soon.length), b.use_soon.length ? b.use_soon.join(", ") : "nothing expiring"),
+      stat("Shopping list", String(b.grocery_count), b.grocery_count ? "across " + plural(aisles, "aisle") : "all done"),
+    );
+  }
+
+  function renderShopping() {
+    $("shop-count").textContent = S.groceries.length;
+    const box = $("shop-list");
+    if (!S.groceries.length) { box.replaceChildren(h("p", { class: "empty" }, "The list is empty. Add something here or say \"Alexa, add milk to the shopping list\".")); return; }
+    const groups = new Map();
+    for (const g of S.groceries) { if (!groups.has(g.aisle)) groups.set(g.aisle, []); groups.get(g.aisle).push(g); }
+    const out = [];
+    for (const [aisle, items] of groups) {
+      const ul = h("ul", { class: "list" });
+      for (const g of items) {
+        const input = h("input", { type: "checkbox", "aria-label": "Bought " + g.item });
+        const label = h("label", { class: "check" }, input,
+          h("span", { class: "name" }, g.quantity ? h("span", { class: "qty" }, g.quantity + " ") : null, g.item),
+          g.added_by ? h("span", { class: "by" }, "added by " + g.added_by) : null);
+        input.addEventListener("change", () => {
+          if (!input.checked) return;
+          label.classList.add("done"); input.disabled = true;
+          setTimeout(() => act("POST", "/api/groceries/check", { item: g.item }, (r) => r.status === "checked_off" ? "Checked off " + g.item : g.item + " was already gone"), 350);
+        });
+        ul.append(h("li", null, label));
+      }
+      out.push(h("div", { class: "aisle" }, h("h3", { class: "aisle-h" }, aisle + " · " + items.length), ul));
+    }
+    box.replaceChildren(...out);
+  }
+
+  function dueText(b) {
+    const d = daysFrom(b.due_date);
+    if (d < 0) return "Overdue by " + plural(-d, "day");
+    if (d === 0) return "Due today";
+    if (d === 1) return "Due tomorrow";
+    return ["Due in " + d + " days · ", h("span", { class: "nowrap" }, fmtDate(b.due_date))];
+  }
+  function renderBills() {
+    const bills = S.bills.bills;
+    $("bills-count").textContent = bills.length;
+    const overdue = bills.filter((b) => b.overdue);
+    $("bills-total").replaceChildren(bills.length ? h("div", { class: "total-line" },
+      h("span", null, overdue.length ? h("span", { class: "bad" }, overdue.length + " overdue · ") : null, plural(bills.length, "unpaid bill")),
+      h("b", null, euro.format(S.bills.total))) : "");
+    if (!bills.length) { $("bills-list").replaceChildren(h("li", { class: "empty" }, "No unpaid bills in the next month.")); return; }
+    $("bills-list").replaceChildren(...bills.map((b) => {
+      const btn = h("button", { class: "btn small", type: "button", "aria-label": "Mark " + b.provider + " " + euro.format(b.amount) + " as paid" }, icon("check"), "Paid");
+      btn.addEventListener("click", () => act("POST", "/api/bills/" + b.id + "/pay", undefined,
+        (r) => r.status !== "paid" ? "That bill was already paid" : "Paid " + r.provider + (r.next_due ? ", next one due " + fmtDate(r.next_due) : ""), btn));
+      return h("li", { class: "row" + (b.overdue ? " overdue" : "") },
+        h("div", { class: "main" },
+          h("div", { class: "title" }, b.provider, b.repeat ? h("span", { class: "tag", title: "Repeats " + b.repeat }, icon("repeat"), b.repeat) : null),
+          h("div", { class: "sub" }, dueText(b))),
+        h("span", { class: "amt" }, euro.format(b.amount)), btn);
+    }));
+  }
+
+  function renderChores() {
+    const chores = S.chores;
+    if (!chores.length) {
+      $("chores-list").replaceChildren(h("li", { class: "empty" }, S.members.length ? "Log a chore below and the rotation starts." : "Add who lives here, then log a chore to start the rotation."));
+    } else {
+      $("chores-list").replaceChildren(...chores.map((c) => {
+        const next = c.next;
+        const btn = next ? h("button", { class: "btn small", type: "button", "aria-label": next + " did " + c.chore + " today" }, icon("check"), "Done") : null;
+        if (btn) btn.addEventListener("click", () => act("POST", "/api/chores", { chore: c.chore, person: next }, (r) => "Logged: " + r.person + " did " + r.chore, btn));
+        return h("li", { class: "row" },
+          next ? avatar(next) : null,
+          h("div", { class: "main" },
+            h("div", { class: "title" }, h("span", { class: "chore-name" }, c.chore)),
+            h("div", { class: "sub" }, "Last: " + c.last_person + ", ", h("span", { class: "nowrap" }, ago(c.last_done)))),
+          next ? h("div", { class: "next-up" }, "Next up", h("b", null, next)) : null,
+          btn);
+      }));
+    }
+    const members = S.members.map((m) => {
+      const rm = h("button", { type: "button", "aria-label": "Remove " + m + " from the rotation" }, icon("x"));
+      rm.addEventListener("click", () => act("DELETE", "/api/members/" + encodeURIComponent(m), undefined, () => m + " left the rotation", rm));
+      return h("span", { class: "member" }, avatar(m), m, rm);
+    });
+    const input = h("input", { class: "field", placeholder: "Add a person", "aria-label": "Add a household member", maxlength: "40", required: true });
+    const form = h("form", { class: "member-form" }, input, h("button", { class: "btn small", type: "submit", "aria-label": "Add member" }, icon("plus")));
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const r = await act("POST", "/api/members", { person: input.value }, (r) => r.status === "added" ? r.person + " joined the rotation" : r.person + " is already here");
+      if (r) $("members").querySelector("input")?.focus();
+    });
+    $("members").replaceChildren(...members, form);
+    const opts = new Set(["trash", "dishes", "laundry", "vacuuming", "bathroom", ...chores.map((c) => c.chore)]);
+    $("chore-options").replaceChildren(...[...opts].map((o) => h("option", { value: o })));
+    $("member-options").replaceChildren(...S.members.map((m) => h("option", { value: m })));
+  }
+
+  function expiryBadge(p) {
+    const d = p.days_left;
+    if (d < 0) return h("span", { class: "badge danger" }, d === -1 ? "Expired yesterday" : "Expired " + -d + " days ago");
+    if (d === 0) return h("span", { class: "badge danger" }, "Expires today");
+    if (d === 1) return h("span", { class: "badge warn" }, "Tomorrow");
+    if (d <= 3) return h("span", { class: "badge warn" }, "In " + d + " days");
+    return h("span", { class: "badge ok" }, "In " + d + " days");
+  }
+  function renderPantry() {
+    $("pantry-count").textContent = S.pantry.length;
+    if (!S.pantry.length) { $("pantry-list").replaceChildren(h("li", { class: "empty" }, "Nothing tracked. Add food with its expiry date so Alexa can remind you.")); return; }
+    $("pantry-list").replaceChildren(...S.pantry.map((p) => {
+      const btn = h("button", { class: "btn small", type: "button", "aria-label": "Mark " + p.item + " as used" }, "Used");
+      btn.addEventListener("click", () => act("POST", "/api/pantry/" + p.id + "/use", undefined, (r) => r.status === "used" ? "Used up " + r.item : "Already used", btn));
+      return h("li", { class: "row" },
+        h("div", { class: "main" }, h("div", { class: "title" }, p.item), h("div", { class: "sub" }, "Best before ", h("span", { class: "nowrap" }, fmtDate(p.expires_on)))),
+        expiryBadge(p), btn);
+    }));
+  }
+
+  function renderConnect() {
+    const c = S.connect; if (!c) return;
+    $("mcp-url").textContent = c.mcp_url;
+    document.querySelectorAll(".url-slot").forEach((n) => { n.textContent = c.mcp_url; });
+    let host = ""; try { host = new URL(c.mcp_url).hostname; } catch (e) { /* keep empty */ }
+    $("local-warn").hidden = !["localhost", "127.0.0.1", "[::1]", "::1"].includes(host);
+    $("tool-count").textContent = c.tools.length;
+    $("tools").replaceChildren(...c.tools.map((t) => h("span", { class: "t" + (t.read_only ? " ro" : ""), title: t.read_only ? "read only" : "writes data" }, t.name)));
+    renderSecrets();
+  }
+  function renderSecrets() {
+    const shown = revealed ? token : "•".repeat(Math.min(Math.max(token.length, 8), 16));
+    document.querySelectorAll(".secret").forEach((n) => { n.textContent = shown; });
+    const b = $("reveal"); b.setAttribute("aria-pressed", String(revealed)); b.querySelector("span").textContent = revealed ? "Hide" : "Reveal";
+  }
+
+  // Actions ---------------------------------------------------------------------
+  async function copy(text, what) {
+    try { await navigator.clipboard.writeText(text); toast(what + " copied"); }
+    catch (e) {
+      const ta = h("textarea", { style: "position:fixed;opacity:0" }); ta.value = text; document.body.append(ta); ta.select();
+      try { document.execCommand("copy"); toast(what + " copied"); } catch (e2) { toast("Copy failed: select the text instead", "error"); }
+      ta.remove();
+    }
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-copy]"); if (!b || !S) return;
+    if (b.dataset.copy === "url") copy(S.connect.mcp_url, "Endpoint");
+    if (b.dataset.copy === "header") copy("Bearer " + token, "Header");
+  });
+  $("reveal").addEventListener("click", () => { revealed = !revealed; renderSecrets(); });
+
+  $("shop-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const item = $("shop-item").value.trim(); if (!item) return;
+    const r = await act("POST", "/api/groceries", { item, quantity: $("shop-qty").value.trim() }, (r) => r.status === "added" ? "Added " + r.item + " to " + r.aisle : r.item + " is already on the list", e.submitter);
+    if (r) { $("shop-item").value = ""; $("shop-qty").value = ""; $("shop-item").focus(); }
+  });
+  $("bill-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const r = await act("POST", "/api/bills", { provider: $("bill-provider").value, amount: $("bill-amount").value, due: $("bill-due").value, repeat: $("bill-repeat").value },
+      (r) => "Added " + r.provider + " " + euro.format(r.amount) + ", due " + fmtDate(r.due_date), e.submitter);
+    if (r) { $("bill-provider").value = ""; $("bill-amount").value = ""; $("bill-repeat").value = ""; }
+  });
+  $("chore-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const r = await act("POST", "/api/chores", { chore: $("chore-name").value, person: $("chore-person").value, when: $("chore-when").value },
+      (r) => "Logged: " + r.person + " did " + r.chore, e.submitter);
+    if (r) { $("chore-name").value = ""; $("chore-person").value = ""; $("chore-when").value = "today"; }
+  });
+  $("pantry-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const r = await act("POST", "/api/pantry", { item: $("pantry-item").value, expires: $("pantry-exp").value },
+      (r) => "Tracking " + r.item + " until " + fmtDate(r.expires_on), e.submitter);
+    if (r) { $("pantry-item").value = ""; $("pantry-exp").value = addDays(S.today, 3); }
+  });
+
+  const speakBtn = $("speak");
+  if (!("speechSynthesis" in window)) speakBtn.hidden = true;
+  speakBtn.addEventListener("click", () => {
+    if (!S) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(S.briefing.speech); u.lang = "en-US"; speechSynthesis.speak(u);
+  });
+  $("refresh").addEventListener("click", () => refresh(false).then((ok) => ok && toast("Up to date")));
+  $("signout").addEventListener("click", () => signOut(""));
+
+  // Sign in / out -----------------------------------------------------------------
+  function showLogin(msg) {
+    $("app").hidden = true; $("login").hidden = false; $("login-err").textContent = msg || "";
+    $("token-input").value = ""; $("token-input").focus();
+  }
+  function signOut(msg) {
+    token = ""; S = null; revealed = false; store.clear(); clearInterval(timer); showLogin(msg);
+  }
+  async function enter() {
+    $("login").hidden = true; $("app").hidden = false;
+    clearInterval(timer);
+    timer = setInterval(() => { if (document.visibilityState === "visible") refresh(true); }, POLL_MS);
+  }
+  $("token-peek").addEventListener("click", (e) => {
+    const inp = $("token-input"); const show = inp.type === "password";
+    inp.type = show ? "text" : "password"; e.currentTarget.setAttribute("aria-pressed", String(show));
+    e.currentTarget.setAttribute("aria-label", show ? "Hide token" : "Show token");
+  });
+  $("login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    token = $("token-input").value.trim(); if (!token) return;
+    $("login-err").textContent = "";
+    try { S = await call("GET", "/api/state"); } catch (err) { token = ""; $("login-err").textContent = err.auth ? "That token was not accepted." : err.message; return; }
+    store.set(token); await enter(); render(); stamp();
+  });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S) refresh(true); });
+
+  token = store.get();
+  if (token) { enter(); refresh(false).then((ok) => { if (!ok && !S) showLogin("Could not load the dashboard."); }); }
+  else showLogin("");
+})();
+</script>
+</body>
+</html>

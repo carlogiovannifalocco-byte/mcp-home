@@ -1,22 +1,13 @@
 import json
-import socket
-import threading
-import time
 from datetime import date
 
 import httpx
 import pytest
-import uvicorn
 
 from mcp_home import logic
 from mcp_home.nl import plan_from_sentence
 
 TODAY = date(2026, 10, 17)
-
-
-@pytest.fixture(autouse=True)
-def tmp_db(tmp_path, monkeypatch):
-    monkeypatch.setenv("MCP_HOME_DB", str(tmp_path / "home.db"))
 
 
 def test_grocery_grouped_by_aisle_and_deduplicated():
@@ -72,7 +63,79 @@ def test_pantry_and_briefing():
     assert [(i["item"], i["expired"]) for i in items] == [("yogurt", True), ("mozzarella", False)]
     logic.add_bill("h", "Enel", 80, "2026-10-10", TODAY)
     speech = logic.weekly_briefing("h", TODAY)["speech"]
-    assert "already overdue (Enel)" in speech and "yogurt, mozzarella" in speech
+    assert speech == "This week: 1 bill due this week for 80.00 euro, 1 already overdue (Enel); use soon: yogurt, mozzarella."
+
+
+def test_grocery_list_follows_walking_order():
+    for item in ("gelato", "latte", "mele", "pane", "batteries"):
+        logic.add_grocery("h", item)
+    assert list(logic.grocery_list("h")["by_aisle"]) == ["produce", "bakery", "dairy", "frozen", "other"]
+
+
+def test_recurring_bill_schedules_next_when_paid():
+    logic.add_bill("h", "Enel", 80, "2026-01-31", TODAY, repeat="bimestrale")
+    paid = logic.pay_bill("h", "enel")
+    assert paid["status"] == "paid" and paid["next_due"] == "2026-03-31"
+    nxt = logic.upcoming_bills("h", 400, TODAY)["bills"]
+    assert [(b["provider"], b["due_date"], b.get("repeat")) for b in nxt] == [("Enel", "2026-03-31", "bimonthly")]
+    logic.add_bill("h", "Netflix", 13.99, "2026-01-31", TODAY, repeat="monthly")
+    assert logic.pay_bill("h", "Netflix")["next_due"] == "2026-02-28"
+    with pytest.raises(ValueError):
+        logic.add_bill("h", "Gas", 10, "tomorrow", TODAY, repeat="sometimes")
+
+
+def test_pay_bill_by_id_is_household_scoped():
+    bill = logic.add_bill("rossi", "Enel", 80, "tomorrow", TODAY)
+    assert logic.pay_bill("bianchi", bill_id=bill["id"])["status"] == "not_found"
+    assert logic.pay_bill("rossi", bill_id=bill["id"])["status"] == "paid"
+
+
+def test_members_and_chore_overview():
+    assert logic.add_member("h", "  giulia ")["person"] == "Giulia"
+    assert logic.add_member("h", "Giulia")["status"] == "already_member"
+    logic.add_member("h", "Marco")
+    logic.log_chore("h", "Dishes", "giulia", TODAY, when="yesterday")
+    logic.log_chore("h", "trash", "Marco", TODAY, when="2 days ago")
+    logic.log_chore("h", "trash", "Giulia", TODAY, when="3 days ago")
+    overview = {c["chore"]: c for c in logic.chore_overview("h")}
+    assert overview["dishes"] == {"chore": "dishes", "last_person": "Giulia", "last_done": "2026-10-16", "next": "Marco"}
+    # Rotation follows the date it was done, not the order it was logged.
+    assert overview["trash"]["last_person"] == "Marco" and overview["trash"]["next"] == "Giulia"
+    assert logic.remove_member("h", "marco")["status"] == "removed"
+    assert logic.list_members("h") == {"count": 1, "members": ["Giulia"]}
+    assert logic.whose_turn("h", "dishes")["next"] == "Giulia"
+    assert logic.remove_member("h", "Marco")["status"] == "not_found"
+
+
+def test_pantry_items_days_left_and_use_by_id():
+    a = logic.add_pantry("h", "yogurt", "2026-10-16", TODAY)
+    logic.add_pantry("h", "yogurt", "2026-10-25", TODAY)
+    items = logic.pantry_items("h", TODAY)
+    assert [(i["item"], i["days_left"], i["expired"]) for i in items] == [("yogurt", -1, True), ("yogurt", 8, False)]
+    assert logic.use_pantry("h", item_id=items[1]["id"])["status"] == "used"
+    assert logic.use_pantry("other", item_id=items[0]["id"])["status"] == "not_found"
+    assert [i["expires_on"] for i in logic.pantry_items("h", TODAY)] == [a["expires_on"]]
+
+
+def test_old_database_gets_recurrence_column(tmp_path, monkeypatch):
+    import sqlite3
+
+    path = tmp_path / "old.db"
+    with sqlite3.connect(path) as c:
+        c.execute("CREATE TABLE bills (id INTEGER PRIMARY KEY, household TEXT NOT NULL, provider TEXT NOT NULL, "
+                  "amount REAL NOT NULL, due_date TEXT NOT NULL, paid INTEGER NOT NULL DEFAULT 0)")
+        c.execute("INSERT INTO bills (household, provider, amount, due_date) VALUES ('h', 'Enel', 80, '2026-10-20')")
+    monkeypatch.setenv("MCP_HOME_DB", str(path))
+    assert logic.upcoming_bills("h", 14, TODAY)["bills"][0]["provider"] == "Enel"
+    assert "next_due" not in logic.pay_bill("h", "Enel")
+
+
+def test_transport_security_allows_public_host():
+    from mcp_home.server import transport_security
+
+    sec = transport_security("https://home.example.com")
+    assert "home.example.com" in sec.allowed_hosts and "https://home.example.com" in sec.allowed_origins
+    assert "localhost:*" in transport_security("http://localhost:8000").allowed_hosts
 
 
 class FakeBedrock:
@@ -103,29 +166,6 @@ def test_bedrock_required():
 
 
 # End to end over Streamable HTTP ------------------------------------------
-
-@pytest.fixture(scope="module")
-def server():
-    # One server per module: the MCP session manager can only be started once per app.
-    mp = pytest.MonkeyPatch()
-    mp.setenv("HOUSEHOLD_TOKENS", "tok-rossi:rossi,tok-bianchi:bianchi")
-    from mcp_home.server import app
-
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        port = s.getsockname()[1]
-    srv = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning"))
-    t = threading.Thread(target=srv.run, daemon=True)
-    t.start()
-    deadline = time.time() + 10
-    while not srv.started:
-        assert time.time() < deadline, "server did not start"
-        time.sleep(0.05)
-    yield f"http://127.0.0.1:{port}/mcp"
-    srv.should_exit = True
-    t.join(5)
-    mp.undo()
-
 
 HEADERS = {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"}
 
@@ -158,6 +198,18 @@ def test_tools_over_http_are_scoped_per_household(server):
     assert call(server, "tok-rossi", "get_grocery_list")["count"] == 1
     assert call(server, "tok-bianchi", "get_grocery_list")["count"] == 0
     assert "speech" in call(server, "tok-rossi", "weekly_briefing")
+
+
+def test_member_tools_and_recurring_bill_over_mcp(server):
+    names = {t["name"]: t for t in rpc(server, "tok-rossi", "tools/list").json()["result"]["tools"]}
+    assert len(names) == 16
+    assert names["household_members"]["annotations"]["readOnlyHint"] is True
+    call(server, "tok-rossi", "add_household_member", {"person": "Giulia"})
+    assert call(server, "tok-rossi", "household_members")["members"] == ["Giulia"]
+    assert call(server, "tok-bianchi", "household_members")["members"] == []
+    call(server, "tok-rossi", "add_bill", {"provider": "Fastweb", "amount": 29.9, "due": "tomorrow", "repeat": "monthly"})
+    assert "next_due" in call(server, "tok-rossi", "mark_bill_paid", {"provider": "Fastweb"})
+    assert call(server, "tok-rossi", "remove_household_member", {"person": "giulia"})["status"] == "removed"
 
 
 def test_negotiates_2025_11_25_protocol(server):
