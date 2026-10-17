@@ -6,7 +6,7 @@
 set -euo pipefail
 
 REGION="${AWS_REGION:-us-east-1}"
-NAME="${SERVICE_NAME:-casa-mcp}"
+NAME="${SERVICE_NAME:-mcp-home}"
 : "${HOUSEHOLD_TOKENS:?set HOUSEHOLD_TOKENS=token:household}"
 : "${APPRUNNER_ECR_ROLE_ARN:?set APPRUNNER_ECR_ROLE_ARN}"
 ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"

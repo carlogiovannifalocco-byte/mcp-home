@@ -8,15 +8,15 @@ import httpx
 import pytest
 import uvicorn
 
-from casa_mcp import logic
-from casa_mcp.nl import plan_from_sentence
+from mcp_home import logic
+from mcp_home.nl import plan_from_sentence
 
 TODAY = date(2026, 10, 17)
 
 
 @pytest.fixture(autouse=True)
 def tmp_db(tmp_path, monkeypatch):
-    monkeypatch.setenv("CASA_DB", str(tmp_path / "casa.db"))
+    monkeypatch.setenv("MCP_HOME_DB", str(tmp_path / "home.db"))
 
 
 def test_grocery_grouped_by_aisle_and_deduplicated():
@@ -109,7 +109,7 @@ def server():
     # One server per module: the MCP session manager can only be started once per app.
     mp = pytest.MonkeyPatch()
     mp.setenv("HOUSEHOLD_TOKENS", "tok-rossi:rossi,tok-bianchi:bianchi")
-    from casa_mcp.server import app
+    from mcp_home.server import app
 
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))

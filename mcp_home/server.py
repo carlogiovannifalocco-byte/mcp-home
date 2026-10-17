@@ -1,4 +1,4 @@
-"""casa-mcp: a self-hosted MCP server (Streamable HTTP) that lets Alexa+ run a household's shared logistics."""
+"""mcp-home: a self-hosted MCP server (Streamable HTTP) that lets Alexa+ run a household's shared logistics."""
 
 from __future__ import annotations
 
@@ -41,10 +41,10 @@ def household() -> str:
 PUBLIC_URL = os.getenv("PUBLIC_URL", "http://localhost:8000")
 
 mcp = MCPServer(
-    name="casa-mcp",
-    title="Casa",
+    name="mcp-home",
+    title="Home",
     instructions=(
-        "Casa keeps one household's shared shopping list, bills, chores and pantry. "
+        "Home keeps one household's shared shopping list, bills, chores and pantry. "
         "Prefer short spoken answers. Amounts are in euro. Dates can be ISO or words like 'tomorrow' or 'in 3 days'."
     ),
     version="0.1.0",
@@ -147,7 +147,7 @@ def do_from_sentence(sentence: str) -> dict:
     return {"actions": results}
 
 
-@mcp.resource("casa://briefing", mime_type="application/json")
+@mcp.resource("home://briefing", mime_type="application/json")
 def briefing_resource() -> dict:
     """What needs attention this week."""
     return logic.weekly_briefing(household())

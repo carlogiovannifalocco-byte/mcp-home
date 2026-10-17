@@ -1,10 +1,10 @@
-# casa-mcp
+# mcp-home
 
 **A self-hosted MCP server that lets Alexa+ run a household's shared logistics: the shopping list, bills, chores and the food about to expire.**
 
 "Alexa, add oat milk to the shopping list." "Alexa, whose turn is it to take out the trash?" "Alexa, what do we need to deal with this week?"
 
-Families already talk to Alexa in the kitchen. What they lack is one shared memory for the boring stuff: who paid the gas bill, who did the dishes last, what is going off in the fridge. casa-mcp is that memory, exposed as an [MCP](https://modelcontextprotocol.io) server over Streamable HTTP so Alexa+ (or any MCP client) can read and update it.
+Families already talk to Alexa in the kitchen. What they lack is one shared memory for the boring stuff: who paid the gas bill, who did the dishes last, what is going off in the fridge. mcp-home is that memory, exposed as an [MCP](https://modelcontextprotocol.io) server over Streamable HTTP so Alexa+ (or any MCP client) can read and update it.
 
 ## Tools
 
@@ -23,7 +23,7 @@ Families already talk to Alexa in the kitchen. What they lack is one shared memo
 | `weekly_briefing` | One sentence Alexa can read aloud: bills due, food to use, list size (read only) |
 | `do_from_sentence` | "We're out of milk and the gas bill of 80 euro is due Friday" → runs both actions, using **Amazon Bedrock** |
 
-Resource: `casa://briefing` (same content as `weekly_briefing`).
+Resource: `home://briefing` (same content as `weekly_briefing`).
 
 Read-only tools carry the MCP `readOnlyHint` annotation so the assistant can call them without asking for confirmation.
 
@@ -31,7 +31,7 @@ Read-only tools carry the MCP `readOnlyHint` annotation so the assistant can cal
 
 ```mermaid
 flowchart LR
-  A[Alexa+] -- MCP Streamable HTTP + Bearer token --> S[casa-mcp]
+  A[Alexa+] -- MCP Streamable HTTP + Bearer token --> S[mcp-home]
   S --> L[household logic<br/>rotation, aisles, dates]
   L --> D[(SQLite per household)]
   S -- do_from_sentence --> B[Amazon Bedrock<br/>Converse API, forced tool use]
@@ -46,7 +46,7 @@ flowchart LR
 ```bash
 pip install -r requirements.txt
 export HOUSEHOLD_TOKENS="$(openssl rand -hex 24):rossi"
-python -m casa_mcp.server            # http://localhost:8000/mcp
+python -m mcp_home.server            # http://localhost:8000/mcp
 ```
 
 Try it with the MCP Inspector (`npx @modelcontextprotocol/inspector`), transport "Streamable HTTP", URL `http://localhost:8000/mcp`, header `Authorization: Bearer <your token>`.
@@ -59,7 +59,7 @@ Try it with the MCP Inspector (`npx @modelcontextprotocol/inspector`), transport
 - for `do_from_sentence`: `BEDROCK_MODEL_ID` (any Bedrock model that supports tool use) and an App Runner instance role allowed to call `bedrock:InvokeModel`,
 - `PUBLIC_URL` set to the service URL, so the OAuth protected-resource metadata points at the right place.
 
-Data lives in SQLite inside the container: fine for a demo, it resets on redeploy. Mount a volume or swap `casa_mcp/db.py` for DynamoDB for real use.
+Data lives in SQLite inside the container: fine for a demo, it resets on redeploy. Mount a volume or swap `mcp_home/db.py` for DynamoDB for real use.
 
 ## Connect to Alexa+
 

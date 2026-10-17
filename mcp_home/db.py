@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS pantry (
 
 
 def db_path() -> str:
-    return os.getenv("CASA_DB", "casa.db")
+    return os.getenv("MCP_HOME_DB", "home.db")
 
 
 @contextmanager
