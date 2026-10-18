@@ -3,44 +3,44 @@
 from __future__ import annotations
 
 import os
-import secrets
 from urllib.parse import urlsplit
 
 from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.auth.provider import AccessToken
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 
-from . import api, logic
+from . import api, logic, oauth
 from .nl import plan_from_sentence
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True)
 
-
-def _tokens() -> dict[str, str]:
-    """HOUSEHOLD_TOKENS="token1:rossi,token2:bianchi" maps bearer tokens to households."""
-    pairs = (p.split(":", 1) for p in os.getenv("HOUSEHOLD_TOKENS", "").split(",") if ":" in p)
-    return {tok.strip(): hh.strip() for tok, hh in pairs}
+PUBLIC_URL = (os.getenv("PUBLIC_URL") or "http://localhost:8000").rstrip("/")
+RESOURCE_URL = f"{PUBLIC_URL}/mcp"
+auth_server = oauth.AuthServer(issuer=PUBLIC_URL, resource=RESOURCE_URL)
 
 
 class HouseholdTokenVerifier:
+    """Accepts the static HOUSEHOLD_TOKENS (MCP Inspector, the dashboard) and OAuth access tokens issued by
+    this server's own authorization server (Alexa+ account linking, other MCP clients)."""
+
     async def verify_token(self, token: str) -> AccessToken | None:
-        for known, household in _tokens().items():
-            if secrets.compare_digest(known, token):
-                return AccessToken(token=token, client_id=household, scopes=["household"])
-        return None
+        household = oauth.household_for_token(token)
+        if household is not None:
+            return AccessToken(token=token, client_id=household, scopes=[oauth.USER_SCOPE], resource=RESOURCE_URL,
+                               subject=household)
+        return oauth.load_access_token(token, RESOURCE_URL)
 
 
 def household() -> str:
     tok = get_access_token()
-    if tok is None:
-        raise PermissionError("missing household token")
+    if tok is None or oauth.USER_SCOPE not in tok.scopes:
+        # ToolError reaches the client as a readable isError result instead of a generic failure.
+        raise ToolError("This needs a linked household account: link mcp-home in the Alexa app first.")
     return tok.client_id
-
-
-PUBLIC_URL = os.getenv("PUBLIC_URL", "http://localhost:8000")
 
 
 def transport_security(public_url: str = PUBLIC_URL) -> TransportSecuritySettings:
@@ -65,9 +65,11 @@ mcp = MCPServer(
         "Home keeps one household's shared shopping list, bills, chores and pantry. "
         "Prefer short spoken answers. Amounts are in euro. Dates can be ISO or words like 'tomorrow' or 'in 3 days'."
     ),
-    version="0.2.0",
+    version="0.3.0",
     token_verifier=HouseholdTokenVerifier(),
-    auth=AuthSettings(issuer_url=PUBLIC_URL, resource_server_url=f"{PUBLIC_URL}/mcp", required_scopes=["household"], validate_token_resource=False),
+    # No required_scopes: a client_credentials `mcp:service` token may initialize and list tools, and every tool
+    # checks the household scope itself through household(). Tokens must be bound to this resource (RFC 8707).
+    auth=AuthSettings(issuer_url=PUBLIC_URL, resource_server_url=RESOURCE_URL, validate_token_resource=True),
 )
 
 
@@ -191,8 +193,37 @@ def briefing_resource() -> dict:
     return logic.weekly_briefing(household())
 
 
+class Without401Challenge:
+    """Drop WWW-Authenticate from 401s on /mcp when ALEXA_COMPAT=1 (or WWW_AUTHENTICATE=off).
+
+    The Alexa+ MCP quick start describes the server answering 401 "without a WWW-Authenticate header" and finding
+    the metadata at the RFC 9728 well-known URI instead. The MCP spec allows either, so the header stays on by
+    default (MCP Inspector and other clients use it) and this switch matches Amazon's description exactly.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http" or not scope["path"].startswith("/mcp"):
+            return await self.app(scope, receive, send)
+
+        async def strip(message):
+            if message["type"] == "http.response.start" and message["status"] == 401:
+                message = {**message, "headers": [(k, v) for k, v in message.get("headers", [])
+                                                  if k.lower() != b"www-authenticate"]}
+            await send(message)
+
+        await self.app(scope, receive, strip)
+
+
 api.register(mcp)
 app = mcp.streamable_http_app(stateless_http=True, json_response=True, transport_security=transport_security())
+# The OAuth routes go first so our protected-resource metadata (with scopes_supported) wins over the SDK's default.
+app.router.routes[0:0] = auth_server.routes()
+if (os.getenv("WWW_AUTHENTICATE", "on").strip().lower() in ("off", "0", "false", "no")
+        or os.getenv("ALEXA_COMPAT", "").strip().lower() in ("1", "true", "yes", "on")):
+    app = Without401Challenge(app)
 
 
 def main() -> None:

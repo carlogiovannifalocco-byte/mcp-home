@@ -18,8 +18,13 @@ aws ecr get-login-password --region "$REGION" | docker login --username AWS --pa
 docker build --platform linux/amd64 -t "$REPO:latest" .
 docker push "$REPO:latest"
 
-ENV_VARS=$(printf '{"HOUSEHOLD_TOKENS":"%s","BEDROCK_MODEL_ID":"%s","AWS_REGION":"%s"}' \
-  "$HOUSEHOLD_TOKENS" "${BEDROCK_MODEL_ID:-}" "$REGION")
+# Optional, for Alexa+ account linking (see README "Connect to Alexa+"): PUBLIC_URL, OAUTH_CLIENT_ID,
+# OAUTH_CLIENT_SECRET, OAUTH_REDIRECT_URIS (comma separated), ALEXA_COMPAT=1. A first deploy does not know its URL
+# yet: set PUBLIC_URL afterwards in the App Runner console (Configuration > Environment variables), or delete and
+# re-run with PUBLIC_URL set. start-deployment below redeploys the image but keeps the service's existing variables.
+ENV_VARS=$(printf '{"HOUSEHOLD_TOKENS":"%s","BEDROCK_MODEL_ID":"%s","AWS_REGION":"%s","PUBLIC_URL":"%s","OAUTH_CLIENT_ID":"%s","OAUTH_CLIENT_SECRET":"%s","OAUTH_REDIRECT_URIS":"%s","ALEXA_COMPAT":"%s"}' \
+  "$HOUSEHOLD_TOKENS" "${BEDROCK_MODEL_ID:-}" "$REGION" "${PUBLIC_URL:-}" "${OAUTH_CLIENT_ID:-}" \
+  "${OAUTH_CLIENT_SECRET:-}" "${OAUTH_REDIRECT_URIS:-}" "${ALEXA_COMPAT:-}")
 
 if ARN=$(aws apprunner list-services --region "$REGION" \
     --query "ServiceSummaryList[?ServiceName=='$NAME'].ServiceArn | [0]" --output text) && [ "$ARN" != "None" ]; then

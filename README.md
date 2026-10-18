@@ -62,7 +62,7 @@ Each write returns `{"result": ..., "state": ...}` so the page re-renders in one
 
 ```mermaid
 flowchart LR
-  A[Alexa+] -- MCP Streamable HTTP + Bearer token --> S[mcp-home]
+  A[Alexa+] -- OAuth account linking, then MCP Streamable HTTP + Bearer token --> S[mcp-home]
   W[Web dashboard] -- /api JSON + same Bearer token --> S
   S --> L[household logic<br/>rotation, aisles, dates]
   L --> D[(SQLite per household)]
@@ -70,7 +70,8 @@ flowchart LR
 ```
 
 - **Transport**: MCP Streamable HTTP at `/mcp`, stateless JSON responses, built on the official Python SDK (`mcp` 2.x). Tested to negotiate protocol version 2025-11-25, the minimum the Alexa+ track asks for.
-- **Households**: every bearer token maps to one household (`HOUSEHOLD_TOKENS="token:household,..."`). Every query filters by household; tokens are compared in constant time. A request without a valid token gets `401`, on `/mcp` and on `/api/*` alike.
+- **Households**: every bearer token maps to one household, either a static one (`HOUSEHOLD_TOKENS="token:household,..."`) or an OAuth access token issued by the built-in authorization server when someone links an app, such as Alexa+, with that household's token. Every query filters by household; tokens are compared in constant time. A request without a valid token gets `401`, on `/mcp` and on `/api/*` alike.
+- **OAuth 2.1**: authorization code + PKCE S256, refresh tokens, `client_credentials`, RFC 9728 and RFC 8414 metadata, all in `mcp_home/oauth.py` (see [Connect to Alexa+](#connect-to-alexa)).
 - **Host check**: the SDK's DNS-rebinding protection accepts localhost plus the host in `PUBLIC_URL` (and any extra `ALLOWED_HOSTS`), so a deployed `/mcp` answers instead of returning `421`.
 - **Bedrock**: `do_from_sentence` calls the Bedrock Converse API with a single forced tool (`plan_actions`) whose JSON schema only allows the four write actions, and passes today's date so "Friday" resolves to a real date. The actions are then validated and executed by the same code the individual tools use, so the model can never write anything the tools could not.
 
@@ -90,13 +91,53 @@ Try it with the MCP Inspector (`npx @modelcontextprotocol/inspector`), transport
 
 - an ECR access role for App Runner (`APPRUNNER_ECR_ROLE_ARN`),
 - for `do_from_sentence`: `BEDROCK_MODEL_ID` (any Bedrock model that supports tool use) and an App Runner instance role allowed to call `bedrock:InvokeModel`,
-- `PUBLIC_URL` set to the service URL, so the OAuth protected-resource metadata points at the right place.
+- `PUBLIC_URL` set to the service URL, so the OAuth metadata, the token audience and the host check all use it. For account linking also pass `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_REDIRECT_URIS` and `ALEXA_COMPAT=1` (see below).
 
 Data lives in SQLite inside the container: fine for a demo, it resets on redeploy. Mount a volume or swap `mcp_home/db.py` for DynamoDB for real use.
 
 ## Connect to Alexa+
 
-Register the deployed `https://<host>/mcp` endpoint as a remote MCP server following the Alexa+ MCP instructions provided for the Build, Ship, Shape hackathon, using a household token as the bearer credential.
+**Hackathon reality first.** The Devpost FAQ says Amazon's Alexa+ add-on tools (Category SDK, MCP Toolkit, `alexa-ai` CLI, Web Simulator) "are in preview" for select partners, that participants cannot get access, and that "there's no way for any participant to connect a self-hosted MCP server to a real Alexa+ device". For the demo, any real MCP client speaking Streamable HTTP is accepted (MCP Inspector with a household token, or the dashboard). The server still implements what the [Alexa+ MCP Toolkit](https://developer.amazon.com/docs/alexaplus/add-ons/mcp-toolkit-quickstart.html) asks for, so it can be linked as soon as access opens.
+
+What Amazon requires, and where it lives here:
+
+| Alexa+ MCP Toolkit requirement | mcp-home |
+|---|---|
+| Streamable HTTP, MCP 2025-11-25 | `/mcp`, tested to negotiate `2025-11-25` |
+| Protected Resource Metadata (RFC 9728) at `/.well-known/oauth-protected-resource`; `resource` must equal the manifest URL exactly | served at that path (and at `/.well-known/oauth-protected-resource/mcp`), `resource` = `PUBLIC_URL` + `/mcp`, one authorization server |
+| Auth server metadata at `/.well-known/oauth-authorization-server`, `code_challenge_methods_supported` includes `S256` | built in, same origin |
+| Authorization code grant with PKCE S256, `resource` parameter | `/authorize` (consent page) and `/token`; S256 is mandatory, `plain` is refused, a wrong `resource` gets `invalid_target` |
+| Static client registration, DCR not supported | `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`, `OAUTH_REDIRECT_URIS` |
+| A refresh token with every access token | yes; rotated on each use, 90 days |
+| Service-level `client_credentials` (HTTP Basic, scope `mcp:service`, at most 3600 s, no refresh token) for private servers | yes: that token can `initialize` and `tools/list`, every tool answers "link your household account first" |
+| 401 for unauthenticated requests, without a `WWW-Authenticate` header | `ALEXA_COMPAT=1` drops the header on `/mcp` (it stays on by default because MCP Inspector uses it) |
+| Bearer token in the `Authorization` header, never in the query string | the only place tokens are read |
+
+Steps, once you have Alexa+ add-on access:
+
+1. Deploy behind HTTPS (`infra/deploy-apprunner.sh`, or a tunnel such as `cloudflared` for testing) and set `PUBLIC_URL=https://<host>`. Check `https://<host>/.well-known/oauth-protected-resource` shows `"resource": "https://<host>/mcp"`.
+2. Create the OAuth client the add-on will use: `OAUTH_CLIENT_ID=alexa-home`, `OAUTH_CLIENT_SECRET=$(openssl rand -hex 32)`, and `OAUTH_REDIRECT_URIS` = every redirect URL the Alexa+ Developer Hub lists for your add-on, comma separated (they look like `https://alexa.amazon.com/api/skill/link/<id>`). Set `ALEXA_COMPAT=1`. Restart.
+3. Authenticate the CLI and scaffold the add-on: `alexa-ai configure`, then `alexa-ai new mcp --name "Home" --locale en-US --mcp-server-url "https://<host>/mcp"`, and answer yes when it asks whether the add-on needs account linking.
+4. Give it the client: `alexa-ai configure-account-linking --addon-id <id> --stage development --client-id alexa-home`, and type the secret at the masked prompt (or export `ALEXA_CLIENT_SECRET`). Alexa reads the endpoints, scopes (`household`) and PKCE support from the metadata above.
+5. Fill in `addon-package/addon.json` (descriptions, 3 to 4 example phrases, privacy and terms URLs, icons) and run `alexa-ai deploy`. Run it again whenever the tools change: Alexa+ only refreshes tool information on deployment.
+6. In the Alexa app, enable the add-on and link the account. The mcp-home consent page shows where the code will be sent, and asks for the **household token**. Entering it proves you belong to that household. From then on Alexa sends an access token that maps to that household only.
+
+To unlink a household from every app at once, remove or change its entry in `HOUSEHOLD_TOKENS`: its OAuth tokens stop working on the next request. Apps can also revoke a grant at `/revoke` (RFC 7009).
+
+### OAuth for other MCP clients
+
+The same authorization server works for any MCP client that follows the 2025-11-25 authorization spec. Clients that register themselves (RFC 7591) need `OAUTH_DYNAMIC_REGISTRATION=1`. It is off by default because Alexa does not use it, and an open registration endpoint lets anyone create a client. Registered redirect URIs must be HTTPS or loopback. Static household tokens keep working for MCP Inspector and the dashboard, with no OAuth needed.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET` | unset | The pre-registered client. Without a secret it is a public client (PKCE only, no `client_credentials`) |
+| `OAUTH_REDIRECT_URIS` | unset | Exact redirect URIs for that client, comma separated |
+| `OAUTH_CLIENT_NAME` | `Alexa` | Name shown on the consent page |
+| `OAUTH_ACCESS_TOKEN_TTL` / `OAUTH_REFRESH_TOKEN_TTL` | 3600 / 7776000 | Lifetimes in seconds |
+| `OAUTH_DYNAMIC_REGISTRATION` | off | Enables `/register` |
+| `ALEXA_COMPAT` | off | Drops `WWW-Authenticate` from `/mcp` 401s (also `WWW_AUTHENTICATE=off`) |
+
+Security details: codes, access and refresh tokens are 256-bit random values and only their SHA-256 is stored in SQLite, with expiry. Codes last 5 minutes and work once: a second redemption revokes everything the code issued, and so does replaying an old refresh token. Redirect URIs are matched exactly, and an unknown one is never redirected to. Client secrets and household tokens are compared in constant time. Ten wrong household tokens from one address within 10 minutes lock the consent page for that address. The consent page has a strict CSP (`frame-ancestors 'none'`, `form-action` limited to the redirect origin). Access tokens are bound to this server's `resource` (RFC 8707) and checked on every request. Authorization responses carry `iss` (RFC 9207).
 
 ## Tests
 
@@ -105,7 +146,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-The suite covers aisle grouping, walking order and duplicates, household isolation, spoken dates, bills, overdue detection and recurring bills, fair chore rotation and members, pantry expiry and the spoken briefing, the Bedrock request shape (with a fake client), the database migration, and end-to-end runs over HTTP: on both `/mcp` and the dashboard API, unauthenticated requests get `401` and two households see only their own data.
+The suite covers aisle grouping, walking order and duplicates, household isolation, spoken dates, bills, overdue detection and recurring bills, fair chore rotation and members, pantry expiry and the spoken briefing, the Bedrock request shape (with a fake client), the database migration, and end-to-end runs over HTTP: on both `/mcp` and the dashboard API, unauthenticated requests get `401` and two households see only their own data. `tests/test_oauth.py` runs the whole account-linking flow over HTTP: metadata documents, the consent page, code + PKCE with Basic and POST client authentication, wrong or missing verifiers, code replay, expired codes and tokens, refresh rotation and replay detection, revocation, unlinking a household, `client_credentials`, opt-in dynamic registration, and household isolation with OAuth tokens.
 
 ## License
 

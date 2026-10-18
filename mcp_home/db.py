@@ -27,6 +27,22 @@ CREATE TABLE IF NOT EXISTS pantry (
     id INTEGER PRIMARY KEY, household TEXT NOT NULL, item TEXT NOT NULL, expires_on TEXT NOT NULL,
     used INTEGER NOT NULL DEFAULT 0
 );
+-- OAuth account linking (mcp_home/oauth.py). Codes and tokens are stored as SHA-256 hashes, never in clear.
+CREATE TABLE IF NOT EXISTS oauth_clients (
+    client_id TEXT PRIMARY KEY, secret_hash TEXT, redirect_uris TEXT NOT NULL, client_name TEXT NOT NULL DEFAULT '',
+    created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS oauth_codes (
+    code_hash TEXT PRIMARY KEY, client_id TEXT NOT NULL, household TEXT NOT NULL, redirect_uri TEXT NOT NULL,
+    code_challenge TEXT NOT NULL, scope TEXT NOT NULL, resource TEXT NOT NULL, grant_id TEXT NOT NULL,
+    expires_at INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS oauth_tokens (
+    token_hash TEXT PRIMARY KEY, kind TEXT NOT NULL, grant_id TEXT NOT NULL, client_id TEXT NOT NULL,
+    household TEXT, scope TEXT NOT NULL, resource TEXT NOT NULL, expires_at INTEGER NOT NULL,
+    revoked INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS oauth_tokens_grant ON oauth_tokens (grant_id);
 """
 
 
