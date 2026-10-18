@@ -131,6 +131,12 @@ Try it with the MCP Inspector (`npx @modelcontextprotocol/inspector`), transport
 
 Data lives in SQLite inside the container: fine for a demo, it resets on redeploy. Mount a volume or swap `mcp_home/db.py` for DynamoDB for real use.
 
+## Public demo on Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/carlogiovannifalocco-byte/mcp-home)
+
+`render.yaml` deploys the same image on Render's free plan as a public demo. Render generates a random `DEMO_TOKEN`, which opens a made-up "demo" household: the dashboard and `/demo` show a **Use the public demo household** button, and `GET /api/demo-token` returns the token for MCP Inspector, so anyone can try the server without asking for credentials. Never put real data in the demo household. Real households keep their own secret tokens in `HOUSEHOLD_TOKENS`, which stays optional. The public URL comes from Render's `RENDER_EXTERNAL_URL`, so OAuth metadata and the host check work without setting `PUBLIC_URL`. Free-text commands need the optional Bedrock variables. The database is in `/tmp`, so a restart empties the demo household, and a free instance sleeps after 15 minutes, so the first visit after that takes about a minute.
+
 ## Connect to Alexa+
 
 **Hackathon reality first.** The Devpost FAQ says Amazon's Alexa+ add-on tools (Category SDK, MCP Toolkit, `alexa-ai` CLI, Web Simulator) "are in preview" for select partners, that participants cannot get access, and that "there's no way for any participant to connect a self-hosted MCP server to a real Alexa+ device". For the demo, any real MCP client speaking Streamable HTTP is accepted (MCP Inspector with a household token, or the dashboard). The server still implements what the [Alexa+ MCP Toolkit](https://developer.amazon.com/docs/alexaplus/add-ons/mcp-toolkit-quickstart.html) asks for, so it can be linked as soon as access opens.

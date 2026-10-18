@@ -16,7 +16,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, Response
 
-from . import logic
+from . import logic, oauth
 
 STATIC = Path(__file__).parent / "static"
 BILL_DAYS = 31  # the dashboard looks a month ahead; the spoken briefing keeps to one week
@@ -75,7 +75,7 @@ def _int(request: Request, key: str) -> int:
 
 
 def mcp_url(request: Request) -> str:
-    base = os.getenv("PUBLIC_URL") or str(request.base_url)
+    base = os.getenv("PUBLIC_URL") or os.getenv("RENDER_EXTERNAL_URL") or str(request.base_url)
     return base.rstrip("/") + "/mcp"
 
 
@@ -162,6 +162,15 @@ def register(mcp) -> None:
     async def demo(request: Request) -> Response:
         """A real MCP client in the browser: initialize, tools/list and tools/call against /mcp."""
         return HTMLResponse((STATIC / "demo.html").read_text(encoding="utf-8"), headers=SECURITY_HEADERS)
+
+    @mcp.custom_route("/api/demo-token", methods=["GET"])
+    async def demo_token(request: Request) -> Response:
+        """The public demo household's token, so visitors and judges can try the server without credentials."""
+        token = oauth.demo_token()
+        if not token:
+            return JSONResponse({"error": "No public demo household on this server."}, status_code=404,
+                                headers=SECURITY_HEADERS)
+        return JSONResponse({"token": token, "household": oauth.DEMO_HOUSEHOLD}, headers=SECURITY_HEADERS)
 
     @mcp.custom_route("/healthz", methods=["GET"], include_in_schema=False)
     async def healthz(request: Request) -> Response:

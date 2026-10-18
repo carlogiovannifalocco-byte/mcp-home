@@ -196,6 +196,7 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
     <input id="token-input" class="field" type="password" required spellcheck="false" autocapitalize="off" aria-describedby="login-err">
     <p class="err" id="login-err" role="alert"></p>
     <button class="btn primary" type="submit">Connect</button>
+    <button class="btn" id="use-demo" type="button" hidden>Use the public demo household</button>
   </form>
 </div>
 
@@ -694,6 +695,13 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
     $("app").hidden = true; $("login").hidden = false;
     $("login-err").textContent = msg || ""; $("token-input").focus();
   }
+  // A server started with DEMO_TOKEN offers its made-up demo household, so nobody needs a token to try it.
+  fetch("/api/demo-token", { cache: "no-store" }).then((r) => r.ok ? r.json() : null).then((d) => {
+    if (!d || !d.token) return;
+    const b = $("use-demo");
+    b.hidden = false;
+    b.addEventListener("click", () => { $("token-input").value = d.token; $("login-form").requestSubmit(); });
+  }).catch(() => {});
   $("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     token = $("token-input").value.trim();

@@ -78,7 +78,19 @@ def _flag(name: str) -> bool:
 def household_tokens() -> dict[str, str]:
     """HOUSEHOLD_TOKENS="token1:rossi,token2:bianchi" maps bearer tokens to households."""
     pairs = (p.split(":", 1) for p in os.getenv("HOUSEHOLD_TOKENS", "").split(",") if ":" in p)
-    return {tok.strip(): hh.strip() for tok, hh in pairs if tok.strip() and hh.strip()}
+    tokens = {tok.strip(): hh.strip() for tok, hh in pairs if tok.strip() and hh.strip()}
+    if demo := demo_token():
+        tokens[demo] = DEMO_HOUSEHOLD
+    return tokens
+
+
+DEMO_HOUSEHOLD = "demo"
+
+
+def demo_token() -> str:
+    """DEMO_TOKEN opens a public "demo" household: the dashboard and /demo offer it to anyone, so it must only
+    ever hold made-up data. Real households keep their own secret tokens in HOUSEHOLD_TOKENS."""
+    return os.getenv("DEMO_TOKEN", "").strip()
 
 
 def household_for_token(token: str) -> str | None:

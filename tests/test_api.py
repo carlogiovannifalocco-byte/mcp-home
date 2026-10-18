@@ -117,3 +117,17 @@ def test_malformed_json_is_a_400(base_url):
     assert r.status_code == 400
     r = httpx.post(f"{base_url}/api/groceries", json=["pane"], headers={"Authorization": "Bearer tok-rossi"})
     assert r.status_code == 400
+
+
+def test_public_demo_household_only_when_demo_token_is_set(base_url, monkeypatch):
+    monkeypatch.delenv("DEMO_TOKEN", raising=False)
+    assert httpx.get(f"{base_url}/api/demo-token").status_code == 404
+    assert api(base_url, "GET", "/api/state", token="demo-tok").status_code == 401
+
+    monkeypatch.setenv("DEMO_TOKEN", "demo-tok")
+    assert ok(httpx.get(f"{base_url}/api/demo-token")) == {"token": "demo-tok", "household": "demo"}
+    assert ok(api(base_url, "GET", "/api/state", token="demo-tok"))["household"] == "demo"
+    # The demo household is its own household: nothing from the real ones shows up there.
+    ok(api(base_url, "POST", "/api/groceries", json={"item": "segreto"}))
+    state = ok(api(base_url, "GET", "/api/state", token="demo-tok"))
+    assert "segreto" not in str(state)

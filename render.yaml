@@ -1,0 +1,28 @@
+# Public demo on Render (free plan). DEMO_TOKEN opens a made-up "demo" household that the dashboard and /demo
+# offer to every visitor, so judges can try the server without credentials. Real households keep their own
+# secret tokens in HOUSEHOLD_TOKENS. The database lives in /tmp: a restart starts the demo household empty.
+# Free instances sleep after 15 minutes without traffic; the first visit after that takes about a minute.
+services:
+  - type: web
+    name: mcp-home-demo
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit      # redeploy on every push to main
+    envVars:
+      - key: MCP_HOME_DB
+        value: /tmp/home.db
+      - key: DEMO_TOKEN
+        generateValue: true        # random value created by Render; shown on the login pages
+      - key: HOUSEHOLD_TOKENS
+        sync: false                # optional: "secret-token:household" pairs for real households
+      # Optional, for free-text commands ("add milk and pay the gas bill") through Amazon Bedrock.
+      - key: BEDROCK_MODEL_ID
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_REGION
+        value: us-east-1

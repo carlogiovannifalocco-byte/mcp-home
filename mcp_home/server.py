@@ -16,7 +16,8 @@ from mcp.types import ToolAnnotations
 from . import api, logic, oauth, speech
 from .nl import plan_from_sentence
 
-PUBLIC_URL = (os.getenv("PUBLIC_URL") or "http://localhost:8000").rstrip("/")
+# RENDER_EXTERNAL_URL is set by Render itself, so a Blueprint deploy works without knowing its URL in advance.
+PUBLIC_URL = (os.getenv("PUBLIC_URL") or os.getenv("RENDER_EXTERNAL_URL") or "http://localhost:8000").rstrip("/")
 RESOURCE_URL = f"{PUBLIC_URL}/mcp"
 auth_server = oauth.AuthServer(issuer=PUBLIC_URL, resource=RESOURCE_URL)
 
