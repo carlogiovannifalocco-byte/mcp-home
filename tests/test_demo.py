@@ -48,8 +48,8 @@ def test_demo_page_drives_the_real_mcp_endpoint(base_url):
         page.click("#login-form button[type=submit]")
         page.wait_for_selector("#conn-pill.on", timeout=10000)
         assert "2025-11-25" in page.inner_text("#s-proto")
-        assert page.locator("#tools li").count() == 16
-        assert page.locator("#tools .tag.ro").count() == 6
+        assert page.locator("#tools li").count() == 18
+        assert page.locator("#tools .tag.ro").count() == 7
 
         page.fill("#say", "Add oat milk to the shopping list")
         page.press("#say", "Enter")
@@ -61,10 +61,22 @@ def test_demo_page_drives_the_real_mcp_endpoint(base_url):
         page.fill("#say", "Whose turn is it to take out the trash?")
         page.press("#say", "Enter")
         page.wait_for_selector(".turn:nth-child(1) .tag.tool:has-text('whose_turn')", timeout=10000)
+
+        # Paying a bill: the server reads it back, and only the following "yes" pays it.
+        httpx.post(f"{base_url}/api/bills", headers={"Authorization": "Bearer tok-rossi"},
+                   json={"provider": "Gas", "amount": 80, "due": "tomorrow"})
+        page.fill("#say", "We paid the gas bill")
+        page.press("#say", "Enter")
+        page.wait_for_selector(".turn:nth-child(1) .tag:has-text('waiting for yes')", timeout=10000)
+        assert page.inner_text(".turn:nth-child(1) .spoken").startswith("Mark the Gas bill of 80 euro, due tomorrow, as paid?")
+        page.fill("#say", "Yes")
+        page.press("#say", "Enter")
+        page.wait_for_selector(".turn:nth-child(1) .spoken:has-text('Marked the Gas bill')", timeout=10000)
         browser.close()
     assert errors == []
     state = httpx.get(f"{base_url}/api/state", headers={"Authorization": "Bearer tok-rossi"}).json()
     assert [g["item"] for g in state["groceries"]] == ["oat milk"]
+    assert state["bills"]["bills"] == []
 
 
 def test_free_sentence_without_bedrock_explains_itself(server, monkeypatch):

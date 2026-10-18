@@ -53,7 +53,7 @@ def test_state_matches_mcp_view_and_lists_connect_info(base_url):
     assert "use soon: mozzarella" in state["briefing"]["speech"]
     assert state["connect"]["mcp_url"] == f"{base_url}/mcp"
     tools = {t["name"]: t["read_only"] for t in state["connect"]["tools"]}
-    assert len(tools) == 16 and tools["weekly_briefing"] is True and tools["add_bill"] is False
+    assert len(tools) == 18 and tools["weekly_briefing"] is True and tools["add_bill"] is False
 
 
 def test_households_are_isolated_through_the_api(base_url):

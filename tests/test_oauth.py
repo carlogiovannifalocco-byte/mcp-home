@@ -318,7 +318,7 @@ def test_client_credentials_token_lists_tools_but_reads_no_household(base_url, s
     body = r.json()
     assert body["scope"] == "mcp:service" and body["expires_in"] <= 3600 and "refresh_token" not in body
     service = body["access_token"]
-    assert len(rpc(server, service, "tools/list").json()["result"]["tools"]) == 16
+    assert len(rpc(server, service, "tools/list").json()["result"]["tools"]) == 18
     result = call(server, service, "get_grocery_list")
     assert result["isError"] and "link" in result["content"][0]["text"].lower()
     assert httpx.get(f"{base_url}/api/state", headers={"Authorization": f"Bearer {service}"}).status_code == 401

@@ -222,7 +222,7 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
       <div class="hero-foot">
         <button class="btn" id="script-btn" type="button"><svg class="ic"><use href="#i-play"/></svg><span>Run demo script</span></button>
         <label class="toggle"><input type="checkbox" id="auto-speak">Speak replies</label>
-        <span class="hint" id="script-hint">Plays six requests with pauses, for recording.</span>
+        <span class="hint" id="script-hint">Plays eight requests with pauses, for recording.</span>
       </div>
     </section>
 
@@ -291,6 +291,7 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
   let sessionId = null;
   let tools = [];
   let running = false;
+  let pending = null; // a read-back waiting for yes or no: { name, args }
 
   function el(tag, attrs, ...kids) {
     const n = document.createElement(tag);
@@ -424,8 +425,12 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
     }
     return null;
   }
+  const YES = /^(?:yes|yeah|yep|sure|confirm|go ahead|do it|s[iì]|certo|va bene)\b/i;
+  const NO = /^(?:no|nope|cancel|don't|stop|annulla|lascia stare)\b/i;
   function route(text) {
     const t = text.trim().replace(/^alexa,?\s+/i, "");
+    // A "yes" answers the server's read-back: call the same tool again with confirm=true.
+    if (pending && YES.test(t)) return { name: pending.name, args: { ...pending.args, confirm: true }, routed: true };
     // "We're out of milk and Anna did the dishes": the part after "and" is a request of its own, so the whole
     // sentence goes to do_from_sentence (Bedrock) instead of one tool swallowing it.
     const parts = t.split(/\s+and\s+/i);
@@ -451,6 +456,8 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
   const list = (xs) => xs.length <= 1 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1];
 
   function speak(name, r) {
+    // The server writes the spoken reply itself (in the household's language); the cases below are a fallback.
+    if (r && typeof r.speech === "string" && r.speech) return r.speech;
     switch (name) {
       case "add_grocery_item":
         return r.status === "already_on_list" ? `${r.item} is already on the shopping list.` : `Added ${r.item} to the shopping list, in the ${r.aisle} aisle.`;
@@ -553,8 +560,14 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
   }
 
   async function ask(text) {
-    const { name, args, routed, compound } = route(text);
     const ui = addTurn(text);
+    if (pending && NO.test(text.trim().replace(/^alexa,?\s+/i, ""))) {
+      pending = null;
+      ui.spoken.className = "spoken"; ui.spoken.textContent = "OK, I won't do that.";
+      ui.meta.append(el("span", { class: "tag", text: "nothing sent" }));
+      return ui.spoken.textContent;
+    }
+    const { name, args, routed, compound } = route(text);
     let reply = "";
     try {
       const r = await callTool(name, args);
@@ -572,8 +585,12 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
             + "Free-form sentences go to do_from_sentence, which needs Amazon Bedrock (set BEDROCK_MODEL_ID on the server).";
         ui.spoken.className = "spoken err";
       } else {
-        reply = speak(name, resultData(result));
+        const data = resultData(result);
+        reply = speak(name, data);
         ui.spoken.className = "spoken";
+        // High-consequence tools read the action back first; the next "yes" confirms it.
+        pending = data && data.status === "needs_confirmation" ? { name, args } : null;
+        if (pending) { reply += " Say yes or no."; ui.meta.append(el("span", { class: "tag", text: "waiting for yes" })); }
       }
       ui.spoken.textContent = reply;
       $("s-last").replaceChildren(name + " ", latencyTag(r.ms));
@@ -608,6 +625,8 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
     "Anna took out the trash yesterday",
     "Whose turn is it to take out the trash?",
     "What do we need to deal with this week?",
+    "We paid the gas bill",
+    "Yes",
   ];
 
   $("chips").replaceChildren(...SUGGESTIONS.map((s) => {
@@ -651,7 +670,7 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
     } finally {
       delete btn.dataset.running; running = false; $("say-btn").disabled = false;
       btn.replaceChildren(icon("play"), el("span", { text: "Run demo script" }));
-      $("script-hint").textContent = scriptStop ? "Stopped." : "Plays six requests with pauses, for recording.";
+      $("script-hint").textContent = scriptStop ? "Stopped." : "Plays eight requests with pauses, for recording.";
     }
   });
 

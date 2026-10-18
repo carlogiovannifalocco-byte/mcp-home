@@ -27,6 +27,15 @@ CREATE TABLE IF NOT EXISTS pantry (
     id INTEGER PRIMARY KEY, household TEXT NOT NULL, item TEXT NOT NULL, expires_on TEXT NOT NULL,
     used INTEGER NOT NULL DEFAULT 0
 );
+-- Per-household preferences (for now only the spoken language).
+CREATE TABLE IF NOT EXISTS settings (
+    household TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (household, key)
+);
+-- Read-backs waiting for a "yes" (high-consequence tools). Single use, short expiry.
+CREATE TABLE IF NOT EXISTS confirmations (
+    household TEXT NOT NULL, tool TEXT NOT NULL, key TEXT NOT NULL, payload TEXT NOT NULL, expires_at INTEGER NOT NULL,
+    PRIMARY KEY (household, tool, key)
+);
 -- OAuth account linking (mcp_home/oauth.py). Codes and tokens are stored as SHA-256 hashes, never in clear.
 CREATE TABLE IF NOT EXISTS oauth_clients (
     client_id TEXT PRIMARY KEY, secret_hash TEXT, redirect_uris TEXT NOT NULL, client_name TEXT NOT NULL DEFAULT '',

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import calendar
+import json
 import re
+import time
 from datetime import date, timedelta
 
+from . import speech
 from .db import connect
 
 AISLES = {
@@ -325,24 +328,82 @@ def use_pantry(household: str, item: str = "", item_id: int | None = None) -> di
 
 # Briefing ----------------------------------------------------------------
 
-def _count(n: int, word: str) -> str:
-    return f"{n} {word}" + ("" if n == 1 else "s")
-
-
-def weekly_briefing(household: str, today: date | None = None) -> dict:
+def weekly_briefing(household: str, today: date | None = None, lang: str | None = None) -> dict:
     bills = upcoming_bills(household, 7, today)
     pantry = pantry_expiring(household, 3, today)
     groceries = grocery_list(household)
-    parts = []
-    if bills["bills"]:
-        overdue = [b for b in bills["bills"] if b["overdue"]]
-        parts.append(
-            f"{_count(len(bills['bills']), 'bill')} due this week for {bills['total']:.2f} euro"
-            + (f", {len(overdue)} already overdue ({', '.join(b['provider'] for b in overdue)})" if overdue else "")
-        )
-    if pantry["items"]:
-        parts.append("use soon: " + ", ".join(i["item"] for i in pantry["items"]))
-    if groceries["count"]:
-        parts.append(f"{_count(groceries['count'], 'item')} on the shopping list")
-    speech = ("This week: " + "; ".join(parts) + ".") if parts else "Nothing needs your attention this week."
-    return {"speech": speech, "bills": bills, "pantry": pantry, "grocery_count": groceries["count"]}
+    lang = lang or get_language(household)
+    text = speech.briefing(bills, pantry, groceries["count"], lang)
+    return {"speech": text, "bills": bills, "pantry": pantry, "grocery_count": groceries["count"], "language": lang}
+
+
+# Settings ----------------------------------------------------------------
+
+def get_language(household: str) -> str:
+    with connect() as c:
+        row = c.execute("SELECT value FROM settings WHERE household=? AND key='language'", (household,)).fetchone()
+    return row["value"] if row else "en"
+
+
+def set_language(household: str, language: str) -> dict:
+    lang = speech.normalize_language(language)
+    with connect() as c:
+        c.execute("INSERT INTO settings (household, key, value) VALUES (?, 'language', ?) "
+                  "ON CONFLICT (household, key) DO UPDATE SET value=excluded.value", (household, lang))
+    return {"status": "saved", "language": lang}
+
+
+def is_empty(household: str) -> bool:
+    """A household nobody has set up yet: no members, nothing on any list."""
+    with connect() as c:
+        for table in ("members", "grocery", "bills", "pantry"):
+            if c.execute(f"SELECT 1 FROM {table} WHERE household=? LIMIT 1", (household,)).fetchone():
+                return False
+    return True
+
+
+# Confirmations -----------------------------------------------------------
+# A high-consequence tool first reads the action back and stores it here; the follow-up call with confirm=true
+# runs only what was read back, once, within CONFIRM_TTL seconds. The server cannot prove a person said "yes"
+# (no MCP client reports that), but it does make the read-back step impossible to skip.
+
+CONFIRM_TTL = 600
+
+
+def _confirm_key(value: str) -> str:
+    return " ".join(value.lower().split())
+
+
+def ask_confirmation(household: str, tool: str, key: str, payload: dict, now: float | None = None) -> None:
+    now = time.time() if now is None else now
+    with connect() as c:
+        c.execute("DELETE FROM confirmations WHERE expires_at < ?", (int(now),))
+        c.execute("INSERT OR REPLACE INTO confirmations (household, tool, key, payload, expires_at) VALUES (?,?,?,?,?)",
+                  (household, tool, _confirm_key(key), json.dumps(payload), int(now) + CONFIRM_TTL))
+
+
+def take_confirmation(household: str, tool: str, key: str, now: float | None = None) -> dict | None:
+    """The read-back stored for this action, consumed; None if there is none or it expired."""
+    now = time.time() if now is None else now
+    with connect() as c:
+        row = c.execute("SELECT payload, expires_at FROM confirmations WHERE household=? AND tool=? AND key=?",
+                        (household, tool, _confirm_key(key))).fetchone()
+        if not row:
+            return None
+        c.execute("DELETE FROM confirmations WHERE household=? AND tool=? AND key=?", (household, tool, _confirm_key(key)))
+    return json.loads(row["payload"]) if row["expires_at"] >= now else None
+
+
+def open_bill(household: str, provider: str) -> dict | None:
+    """The oldest unpaid bill from this provider (the one mark_bill_paid would pay)."""
+    with connect() as c:
+        row = c.execute(
+            "SELECT id, provider, amount, due_date, recurrence FROM bills WHERE household=? AND lower(provider)=lower(?) "
+            "AND paid=0 ORDER BY due_date LIMIT 1", (household, provider.strip())).fetchone()
+    return dict(row) if row else None
+
+
+def is_member(household: str, person: str) -> bool:
+    with connect() as c:
+        return c.execute("SELECT 1 FROM members WHERE household=? AND person=?",
+                         (household, _person(person))).fetchone() is not None

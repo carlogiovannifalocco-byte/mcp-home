@@ -16,19 +16,37 @@ Families already talk to Alexa in the kitchen. What they lack is one shared memo
 | `get_grocery_list` | The list in the order you walk the store (read only) |
 | `check_off_grocery_item` | Marks an item as bought |
 | `add_bill` | Records a bill; due date as `YYYY-MM-DD` or "tomorrow", "in 10 days", "tra 3 giorni"; optional `repeat` (weekly, monthly, bimonthly, quarterly, yearly) |
-| `mark_bill_paid` | Pays the oldest open bill from that provider; a recurring bill gets its next one scheduled |
+| `mark_bill_paid` | Pays the oldest open bill from that provider; a recurring bill gets its next one scheduled. **Reads the bill back first** and pays only on `confirm=true` |
 | `upcoming_deadlines` | Unpaid bills in the next N days, overdue ones flagged, with the total (read only) |
 | `log_chore` | "Anna took out the trash" (today by default, or `when`: "yesterday", "2 days ago") |
 | `whose_turn` | Fair rotation: whoever did that chore least recently, or never (read only) |
-| `household_members` / `add_household_member` / `remove_household_member` | Who is in the chore rotation (listing is read only) |
+| `household_members` / `add_household_member` / `remove_household_member` | Who is in the chore rotation (listing is read only; removing **reads back first**) |
 | `add_pantry_item` / `mark_pantry_used` | Tracks food with expiry dates |
 | `pantry_expiring` | What to eat before it goes off (read only) |
 | `weekly_briefing` | One sentence Alexa can read aloud: bills due, food to use, list size (read only) |
-| `do_from_sentence` | "We're out of milk and the gas bill of 80 euro is due Friday" → runs both actions, using **Amazon Bedrock** |
+| `do_from_sentence` | "We're out of milk and the gas bill of 80 euro is due Friday" → plans both actions with **Amazon Bedrock**, reads the plan back, and runs exactly that plan on `confirm=true` |
+| `what_can_you_do` | The answer to "Alexa, what can you do?"; for a new household it also says how to start (read only) |
+| `set_language` | English or Italian replies for this household |
 
-Resource: `home://briefing` (same content as `weekly_briefing`).
+Resource: `home://briefing` (same content as `weekly_briefing`). Prompts: `set_up_household` (guided first run: language, members, recurring bills, chores) and `weekly_review`.
 
-Read-only tools carry the MCP `readOnlyHint` annotation so the assistant can call them without asking for confirmation.
+Every tool has a title and explicit annotations. Read-only tools carry `readOnlyHint`. The spec treats any other tool as destructive unless it says otherwise, so the additive ones say `destructiveHint: false` and only `mark_bill_paid` and `remove_household_member` say `true`.
+
+## Built for voice
+
+What the Alexa+ documentation asks of an add-on, and how mcp-home answers it:
+
+| Alexa+ asks ([functional requirements](https://developer.amazon.com/docs/alexaplus/add-ons/functional-requirements), [quick start](https://developer.amazon.com/docs/alexaplus/add-ons/mcp-toolkit-quickstart)) | mcp-home |
+|---|---|
+| "Require explicit confirmation with key details before any high-consequence action (payment, cancellation, deletion)"; on screenless devices "read back all key details and require explicit 'yes'" | Paying a bill, removing a member and free-form sentences answer `needs_confirmation` with a spoken read-back ("Mark the Gas bill of 80 euro, due Saturday 10 October, as paid?"). The read-back is stored on the server for 10 minutes; `confirm=true` runs only what was read back, once. A `confirm=true` with no read-back just reads back. The server cannot prove a person said yes (no MCP client reports that), but it makes the read-back impossible to skip. |
+| "Surface no API codes, tool names, JSON, or internal IDs in any customer-facing response" | Every result has a `speech` sentence written for the ear: relative dates ("tomorrow", "Friday 23 October"), no ids, no tool names. A test checks every tool's reply for ids and snake_case names. |
+| "Provide actionable next step for every error" | "I couldn't find an open Enel bill. Want to hear what's due?"; "Tell me who lives here first, for example: add Anna to the household." |
+| "Return a useful, contextually relevant summary when the customer asks 'What can you do?'" | `what_can_you_do`, which also guides a household nobody has set up yet |
+| "A round-trip query response latency of less than 500 ms" | `scripts/latency.py <url> <token>` measures p50/p95/max of real `tools/call` round trips. On localhost (4 vCPU container, SQLite, 50 calls per tool) the worst p95 was **9.4 ms**. That excludes the network to the deployed server, so run it against your own deployment. A test fails the build if p95 on localhost reaches 500 ms. |
+
+**Why a `confirm` argument and not MCP elicitation.** The Alexa+ [client lifecycle](https://developer.amazon.com/docs/alexaplus/add-ons/mcp-toolkit-client-lifecycle) example `initialize` declares only `roots`, not `elicitation`, and the server runs stateless (`json_response`, no SSE stream to carry a server-to-client request). A read-back plus a confirming call works with any MCP client, Alexa+ included.
+
+**English and Italian.** `set_language` switches a household's spoken replies, the weekly briefing and the dashboard's "What Alexa will say" to Italian ("Tocca a Giulia portare fuori la spazzatura."). Dates are already understood in both ("tomorrow", "tra 3 giorni").
 
 ## Dashboard
 
@@ -70,8 +88,9 @@ Open `http://localhost:8000/demo` (linked from the dashboard header and its Conn
   - The tool that was called.
   - The round-trip time, green under the 500 ms Alexa+ asks for.
   - The JSON-RPC request and response, collapsed.
-- **Session panel.** The negotiated protocol version, the server info, the handshake timings, and the `initialize`/`tools/list` exchange. Next to it, the 16 tools with their read-only badges.
-- **Run demo script** plays six requests with pauses, typing each sentence first; tick *Speak replies* to hear them. Good for recording the video. Add `?speak` to the URL to start with speech on.
+- **Read-back, then yes.** "We paid the gas bill" gets the server's read-back and a *waiting for yes* tag; "yes" sends the same call with `confirm=true`, "no" sends nothing.
+- **Session panel.** The negotiated protocol version, the server info, the handshake timings, and the `initialize`/`tools/list` exchange. Next to it, the 18 tools with their read-only badges.
+- **Run demo script** plays eight requests with pauses (the last two pay the gas bill after a spoken read-back and a "yes"), typing each sentence first; tick *Speak replies* to hear them. Good for recording the video. Add `?speak` to the URL to start with speech on.
 
 It uses the same strict Content-Security-Policy as the dashboard (`connect-src 'self'`, no inline event handlers) and the same token storage.
 
@@ -163,7 +182,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-`tests/test_demo.py` loads `/demo` in headless Chromium, signs in, and checks the handshake, the 16 tools, and a spoken reply produced by a real `tools/call`. The suite also covers aisle grouping, walking order and duplicates, household isolation, spoken dates, bills, overdue detection and recurring bills, fair chore rotation and members, pantry expiry and the spoken briefing, the Bedrock request shape (with a fake client), the database migration, and end-to-end runs over HTTP: on both `/mcp` and the dashboard API, unauthenticated requests get `401` and two households see only their own data. `tests/test_oauth.py` runs the whole account-linking flow over HTTP: metadata documents, the consent page, code + PKCE with Basic and POST client authentication, wrong or missing verifiers, code replay, expired codes and tokens, refresh rotation and replay detection, revocation, unlinking a household, `client_credentials`, opt-in dynamic registration, and household isolation with OAuth tokens.
+`tests/test_demo.py` loads `/demo` in headless Chromium, signs in, and checks the handshake, the 18 tools, a spoken reply produced by a real `tools/call`, and a bill paid only after the read-back and a typed "yes". `tests/test_voice.py` covers the spoken replies (no ids or tool names, English and Italian), every confirmation path (read-back first, single use, expiry, no cross-household confirm, a sentence plan confirmed without a second model call), the annotations, the prompts, "what can you do", and the 500 ms budget. The suite also covers aisle grouping, walking order and duplicates, household isolation, spoken dates, bills, overdue detection and recurring bills, fair chore rotation and members, pantry expiry and the spoken briefing, the Bedrock request shape (with a fake client), the database migration, and end-to-end runs over HTTP: on both `/mcp` and the dashboard API, unauthenticated requests get `401` and two households see only their own data. `tests/test_oauth.py` runs the whole account-linking flow over HTTP: metadata documents, the consent page, code + PKCE with Basic and POST client authentication, wrong or missing verifiers, code replay, expired codes and tokens, refresh rotation and replay detection, revocation, unlinking a household, `client_credentials`, opt-in dynamic registration, and household isolation with OAuth tokens.
 
 The browser test needs Playwright (`pip install playwright && playwright install chromium`, or point `PLAYWRIGHT_CHROMIUM` at an existing Chrome) and is skipped without it.
 

@@ -202,14 +202,16 @@ def test_tools_over_http_are_scoped_per_household(server):
 
 def test_member_tools_and_recurring_bill_over_mcp(server):
     names = {t["name"]: t for t in rpc(server, "tok-rossi", "tools/list").json()["result"]["tools"]}
-    assert len(names) == 16
+    assert len(names) == 18
     assert names["household_members"]["annotations"]["readOnlyHint"] is True
     call(server, "tok-rossi", "add_household_member", {"person": "Giulia"})
     assert call(server, "tok-rossi", "household_members")["members"] == ["Giulia"]
     assert call(server, "tok-bianchi", "household_members")["members"] == []
     call(server, "tok-rossi", "add_bill", {"provider": "Fastweb", "amount": 29.9, "due": "tomorrow", "repeat": "monthly"})
-    assert "next_due" in call(server, "tok-rossi", "mark_bill_paid", {"provider": "Fastweb"})
-    assert call(server, "tok-rossi", "remove_household_member", {"person": "giulia"})["status"] == "removed"
+    assert call(server, "tok-rossi", "mark_bill_paid", {"provider": "Fastweb"})["status"] == "needs_confirmation"
+    assert "next_due" in call(server, "tok-rossi", "mark_bill_paid", {"provider": "Fastweb", "confirm": True})
+    assert call(server, "tok-rossi", "remove_household_member", {"person": "giulia"})["status"] == "needs_confirmation"
+    assert call(server, "tok-rossi", "remove_household_member", {"person": "giulia", "confirm": True})["status"] == "removed"
 
 
 def test_negotiates_2025_11_25_protocol(server):
