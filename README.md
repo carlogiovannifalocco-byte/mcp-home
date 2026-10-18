@@ -58,6 +58,23 @@ The page is one self-contained file (`mcp_home/static/index.html`, no CDNs, stri
 
 Each write returns `{"result": ..., "state": ...}` so the page re-renders in one round trip. Requests without a valid token get `401`; ids from another household answer `not_found`.
 
+## MCP client demo
+
+Open `http://localhost:8000/demo` (linked from the dashboard header and its Connect panel). The page is a real MCP client running in the browser. It sends `initialize` (protocol 2025-11-25), `notifications/initialized`, `tools/list` and `tools/call` to `/mcp` over Streamable HTTP, with the household bearer token. This is the kind of client the Devpost FAQ accepts for the Alexa+ track demo.
+
+![The MCP client demo: a sentence typed as you would say it to Alexa, the spoken reply, the tool it called, its latency and the JSON-RPC exchange](docs/mcp-client-demo.png)
+
+- **Say it like you would to Alexa.** "Add oat milk to the shopping list", "The gas bill of 80 euro is due Friday", "Whose turn is it to take out the trash?", "What do we need to deal with this week?". A small deterministic router in the page maps these phrasings to one tool and its arguments. Anything it does not recognise goes to `do_from_sentence`, which needs Amazon Bedrock; without `BEDROCK_MODEL_ID` the page says so.
+- **What you see for each call.**
+  - The reply as the sentence Alexa would speak, with *Read aloud* (browser speech).
+  - The tool that was called.
+  - The round-trip time, green under the 500 ms Alexa+ asks for.
+  - The JSON-RPC request and response, collapsed.
+- **Session panel.** The negotiated protocol version, the server info, the handshake timings, and the `initialize`/`tools/list` exchange. Next to it, the 16 tools with their read-only badges.
+- **Run demo script** plays six requests with pauses, typing each sentence first; tick *Speak replies* to hear them. Good for recording the video. Add `?speak` to the URL to start with speech on.
+
+It uses the same strict Content-Security-Policy as the dashboard (`connect-src 'self'`, no inline event handlers) and the same token storage.
+
 ## How it works
 
 ```mermaid
@@ -146,7 +163,9 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-The suite covers aisle grouping, walking order and duplicates, household isolation, spoken dates, bills, overdue detection and recurring bills, fair chore rotation and members, pantry expiry and the spoken briefing, the Bedrock request shape (with a fake client), the database migration, and end-to-end runs over HTTP: on both `/mcp` and the dashboard API, unauthenticated requests get `401` and two households see only their own data. `tests/test_oauth.py` runs the whole account-linking flow over HTTP: metadata documents, the consent page, code + PKCE with Basic and POST client authentication, wrong or missing verifiers, code replay, expired codes and tokens, refresh rotation and replay detection, revocation, unlinking a household, `client_credentials`, opt-in dynamic registration, and household isolation with OAuth tokens.
+`tests/test_demo.py` loads `/demo` in headless Chromium, signs in, and checks the handshake, the 16 tools, and a spoken reply produced by a real `tools/call`. The suite also covers aisle grouping, walking order and duplicates, household isolation, spoken dates, bills, overdue detection and recurring bills, fair chore rotation and members, pantry expiry and the spoken briefing, the Bedrock request shape (with a fake client), the database migration, and end-to-end runs over HTTP: on both `/mcp` and the dashboard API, unauthenticated requests get `401` and two households see only their own data. `tests/test_oauth.py` runs the whole account-linking flow over HTTP: metadata documents, the consent page, code + PKCE with Basic and POST client authentication, wrong or missing verifiers, code replay, expired codes and tokens, refresh rotation and replay detection, revocation, unlinking a household, `client_credentials`, opt-in dynamic registration, and household isolation with OAuth tokens.
+
+The browser test needs Playwright (`pip install playwright && playwright install chromium`, or point `PLAYWRIGHT_CHROMIUM` at an existing Chrome) and is skipped without it.
 
 ## License
 

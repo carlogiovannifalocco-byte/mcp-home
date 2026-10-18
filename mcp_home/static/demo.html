@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex">
+<title>mcp-home MCP client</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b4532a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f5f1ea; --surface: #ffffff; --surface-2: #f3eee6; --surface-3: #ebe4d9; --text: #1f1a15; --muted: #6c6257;
+  --faint: #978c80; --border: #e5ddd1; --accent: #b4532a; --accent-strong: #9a4321; --accent-soft: #f7e6dc;
+  --accent-ink: #ffffff; --hero: linear-gradient(135deg, #fff8f1 0%, #fbeee4 100%); --hero-border: #efd9ca;
+  --ok: #2c7a4b; --ok-soft: #e3f2e8; --warn: #9a5b00; --warn-soft: #fdf0d7; --danger: #b42318; --danger-soft: #fde7e4;
+  --code-bg: #faf7f2;
+  --shadow: 0 1px 2px rgba(60, 40, 20, .05), 0 4px 16px rgba(60, 40, 20, .05);
+  --focus: 0 0 0 3px rgba(180, 83, 42, .35);
+  --radius: 16px;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, ui-serif, serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141210; --surface: #1d1a17; --surface-2: #25211d; --surface-3: #2e2924; --text: #f2ece4; --muted: #b0a598;
+    --faint: #857a6e; --border: #36302a; --accent: #e8875c; --accent-strong: #f19a72; --accent-soft: #3a261c;
+    --accent-ink: #1b120d; --hero: linear-gradient(135deg, #2a1f18 0%, #221a15 100%); --hero-border: #44322a;
+    --ok: #6fcf97; --ok-soft: #1c3226; --warn: #f0b44c; --warn-soft: #3a2e17; --danger: #ff8a7a; --danger-soft: #3d1f1b;
+    --code-bg: #181613;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .25); --focus: 0 0 0 3px rgba(232, 135, 92, .45);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141210; --surface: #1d1a17; --surface-2: #25211d; --surface-3: #2e2924; --text: #f2ece4; --muted: #b0a598;
+  --faint: #857a6e; --border: #36302a; --accent: #e8875c; --accent-strong: #f19a72; --accent-soft: #3a261c;
+  --accent-ink: #1b120d; --hero: linear-gradient(135deg, #2a1f18 0%, #221a15 100%); --hero-border: #44322a;
+  --ok: #6fcf97; --ok-soft: #1c3226; --warn: #f0b44c; --warn-soft: #3a2e17; --danger: #ff8a7a; --danger-soft: #3d1f1b;
+  --code-bg: #181613;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 20px rgba(0, 0, 0, .25); --focus: 0 0 0 3px rgba(232, 135, 92, .45);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--sans); -webkit-font-smoothing: antialiased; min-height: 100vh; }
+[hidden] { display: none !important; }
+button, input { font: inherit; color: inherit; }
+a { color: var(--accent-strong); }
+code, .mono { font-family: var(--mono); font-size: .86em; }
+.ic { width: 18px; height: 18px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+:focus-visible { outline: none; box-shadow: var(--focus); }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 20px 24px 48px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; text-decoration: none; transition: background .15s, border-color .15s; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+.btn.ghost:hover { background: var(--surface-2); color: var(--text); }
+.btn.small { min-height: 34px; padding: 0 11px; font-size: 13px; border-radius: 9px; }
+.btn:disabled { opacity: .55; cursor: default; }
+.field { min-height: 42px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); min-width: 0; width: 100%; }
+.field:focus { border-color: var(--accent); box-shadow: var(--focus); outline: none; }
+label.lbl { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 4px; }
+
+.top { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; color: var(--text); text-decoration: none; }
+.brand-mark { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); }
+.brand-mark .ic { width: 20px; height: 20px; stroke-width: 2.2; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--muted); }
+.pill b { color: var(--text); }
+.pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.pill.on .dot { background: var(--ok); }
+.pill.bad .dot { background: var(--danger); }
+.top .spacer { flex: 1; }
+
+/* Ask */
+.hero { background: var(--hero); border: 1px solid var(--hero-border); border-radius: 20px; padding: 24px 26px 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
+.eyebrow { display: flex; align-items: center; gap: 8px; color: var(--accent-strong); font-weight: 700; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+.eyebrow .pulse { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); }
+.eyebrow .pulse .ic { width: 15px; height: 15px; }
+.hero h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(22px, 2.6vw, 30px); line-height: 1.25; margin: 10px 0 4px; letter-spacing: -.005em; }
+.hero p.lead { color: var(--muted); margin: 0 0 16px; max-width: 70ch; }
+.say { display: flex; gap: 8px; align-items: stretch; }
+.say .field { min-height: 52px; font-size: 17px; border-radius: 14px; padding: 0 16px; }
+.say .btn { min-height: 52px; border-radius: 14px; padding: 0 20px; font-size: 15px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.chip { border: 1px solid var(--hero-border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 6px 12px; font-size: 13.5px; cursor: pointer; }
+.chip:hover { border-color: var(--accent); color: var(--accent-strong); }
+.hero-foot { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--hero-border); }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+.hint { font-size: 13px; color: var(--faint); }
+
+/* Layout */
+.grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px 20px; min-width: 0; }
+.side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.card-h { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.card-h h2 { font-size: 17px; margin: 0; letter-spacing: -.01em; }
+.card-h .chip-ic { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-strong); }
+.card-h .push { margin-left: auto; }
+.card-h .meta { margin-left: auto; color: var(--muted); font-size: 13px; }
+.empty { color: var(--muted); font-size: 14px; padding: 18px 14px; text-align: center; background: var(--surface-2); border-radius: 12px; }
+
+/* Transcript */
+ol.turns { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.turn { border-top: 1px solid var(--border); padding-top: 16px; }
+.turn:first-child { border-top: 0; padding-top: 0; }
+.you { display: flex; justify-content: flex-end; }
+.you p { margin: 0; background: var(--accent-soft); color: var(--text); padding: 9px 14px; border-radius: 16px 16px 4px 16px; max-width: 85%; font-weight: 500; overflow-wrap: anywhere; }
+.alexa { margin-top: 10px; display: flex; gap: 12px; align-items: flex-start; }
+.alexa .av { width: 32px; height: 32px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); }
+.alexa .av .ic { width: 16px; height: 16px; }
+.alexa .body { flex: 1; min-width: 0; }
+.spoken { font-family: var(--serif); font-size: 19px; line-height: 1.4; margin: 3px 0 8px; text-wrap: pretty; overflow-wrap: anywhere; }
+.spoken.err { color: var(--danger); font-family: var(--sans); font-size: 15px; font-weight: 600; }
+.spoken.pending { color: var(--faint); font-style: italic; }
+.meta-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.tag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); white-space: nowrap; border: 1px solid var(--border); }
+.tag.tool { font-family: var(--mono); font-weight: 600; }
+.tag.fast { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+.tag.slow { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.tag.ro { color: var(--ok); }
+.meta-row .btn { margin-left: auto; }
+details.wire { margin-top: 8px; }
+details.wire > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); padding: 4px 0; list-style: none; display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; }
+details.wire > summary::-webkit-details-marker { display: none; }
+details.wire > summary .ic { width: 14px; height: 14px; transition: transform .15s; }
+details.wire[open] > summary .ic { transform: rotate(90deg); }
+.wire-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 6px; }
+.wire-grid .lbl { margin: 0 0 2px; }
+pre { margin: 0; background: var(--code-bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font: 12px/1.5 var(--mono); overflow: auto; max-height: 280px; white-space: pre; }
+
+/* Session + tools */
+dl.kv { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; font-size: 14px; }
+dl.kv dt { color: var(--muted); font-weight: 600; font-size: 13px; }
+dl.kv dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.note { font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+ul.tools { list-style: none; margin: 0; padding: 0; }
+ul.tools li { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border); }
+ul.tools li:first-child { border-top: 0; }
+ul.tools .name { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+ul.tools .desc { font-size: 12.5px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+ul.tools .t { flex: 1; min-width: 0; }
+
+/* Sign in */
+.login { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+.login .box { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); padding: 28px; }
+.login h1 { font-size: 22px; margin: 16px 0 6px; letter-spacing: -.01em; }
+.login p { color: var(--muted); margin: 0 0 18px; }
+.login .err { color: var(--danger); font-weight: 600; font-size: 14px; margin: 10px 0 0; min-height: 1.4em; }
+.login .btn { width: 100%; margin-top: 14px; min-height: 44px; }
+
+footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 12.5px; }
+
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) {
+  .wrap { padding: 14px 16px 40px; }
+  .top { gap: 8px; }
+  .brand span.word { display: none; }
+  .hero { padding: 18px 16px 16px; border-radius: 18px; }
+  .say { flex-direction: column; }
+  .say .btn { width: 100%; }
+  .card { padding: 16px; }
+  .spoken { font-size: 17px; }
+  .btn.hide-sm span { display: none; }
+  .you p { max-width: 92%; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+  <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M6 8h12v3a6 6 0 0 1-12 0zM12 17v5"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0 5 5L22 14l-8 8-2.3-2.3a4 4 0 0 0-5-5L2 10l8-8z"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></symbol>
+</svg>
+
+<!-- Sign in -->
+<div id="login" class="login" hidden>
+  <form class="box" id="login-form" autocomplete="off">
+    <div class="brand"><div class="brand-mark"><svg class="ic"><use href="#i-home"/></svg></div>mcp-home</div>
+    <h1>MCP client demo</h1>
+    <p>This page is a real MCP client: it talks to <code>/mcp</code> over Streamable HTTP with your household token, exactly like Alexa+ would. The token stays in this browser.</p>
+    <label class="lbl" for="token-input">Household token</label>
+    <input id="token-input" class="field" type="password" required spellcheck="false" autocapitalize="off" aria-describedby="login-err">
+    <p class="err" id="login-err" role="alert"></p>
+    <button class="btn primary" type="submit">Connect</button>
+  </form>
+</div>
+
+<div id="app" hidden>
+  <div class="wrap">
+    <header class="top">
+      <a class="brand" href="/"><div class="brand-mark"><svg class="ic"><use href="#i-home"/></svg></div><span class="word">mcp-home</span></a>
+      <span class="pill" id="conn-pill"><span class="dot"></span><span id="conn-text">Connecting…</span></span>
+      <span class="spacer"></span>
+      <a class="btn ghost small hide-sm" href="/" aria-label="Back to the dashboard"><svg class="ic"><use href="#i-back"/></svg><span>Dashboard</span></a>
+      <button class="btn ghost small hide-sm" id="clear" type="button" aria-label="Clear the conversation"><svg class="ic"><use href="#i-trash"/></svg><span>Clear</span></button>
+    </header>
+
+    <section class="hero" aria-labelledby="ask-h">
+      <div class="eyebrow"><span class="pulse"><svg class="ic"><use href="#i-speaker"/></svg></span>MCP client demo</div>
+      <h1 id="ask-h">Say it the way you would to Alexa</h1>
+      <p class="lead">Each sentence is matched to one of the server's tools and sent as a real <code>tools/call</code> over Streamable HTTP. The reply below is what Alexa would speak.</p>
+      <form class="say" id="say-form" autocomplete="off">
+        <label class="sr-only" for="say">What you would say to Alexa</label>
+        <input class="field" id="say" maxlength="300" placeholder="e.g. add oat milk to the shopping list" enterkeyhint="send" required>
+        <button class="btn primary" id="say-btn" type="submit"><svg class="ic"><use href="#i-send"/></svg>Ask</button>
+      </form>
+      <div class="chips" id="chips" aria-label="Try one of these"></div>
+      <div class="hero-foot">
+        <button class="btn" id="script-btn" type="button"><svg class="ic"><use href="#i-play"/></svg><span>Run demo script</span></button>
+        <label class="toggle"><input type="checkbox" id="auto-speak">Speak replies</label>
+        <span class="hint" id="script-hint">Plays six requests with pauses, for recording.</span>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="turns-h">
+        <div class="card-h">
+          <span class="chip-ic"><svg class="ic"><use href="#i-chat"/></svg></span>
+          <h2 id="turns-h">Conversation</h2>
+          <span class="meta">newest first</span>
+        </div>
+        <p class="empty" id="turns-empty">Ask something above, or run the demo script.</p>
+        <ol class="turns" id="turns" aria-live="polite"></ol>
+      </section>
+
+      <div class="side">
+        <section class="card" aria-labelledby="session-h">
+          <div class="card-h">
+            <span class="chip-ic"><svg class="ic"><use href="#i-plug"/></svg></span>
+            <h2 id="session-h">Session</h2>
+            <button class="btn small push" id="reconnect" type="button">Reconnect</button>
+          </div>
+          <dl class="kv">
+            <dt>Endpoint</dt><dd><code id="s-url"></code></dd>
+            <dt>Transport</dt><dd>Streamable HTTP, JSON responses</dd>
+            <dt>Protocol</dt><dd id="s-proto">–</dd>
+            <dt>Server</dt><dd id="s-server">–</dd>
+            <dt>Handshake</dt><dd id="s-init">–</dd>
+            <dt>Last call</dt><dd id="s-last">–</dd>
+          </dl>
+          <p class="note">Alexa+ asks MCP servers for a round trip under 500 ms. Each call shows its own time.</p>
+          <details class="wire" id="s-wire">
+            <summary><svg class="ic"><use href="#i-chev"/></svg>initialize and tools/list on the wire</summary>
+            <div class="wire-grid" id="s-wire-body"></div>
+          </details>
+        </section>
+
+        <section class="card" aria-labelledby="tools-h">
+          <div class="card-h">
+            <span class="chip-ic"><svg class="ic"><use href="#i-wrench"/></svg></span>
+            <h2 id="tools-h">Tools</h2>
+            <span class="meta" id="tools-meta"></span>
+          </div>
+          <ul class="tools" id="tools"><li class="empty">Loading…</li></ul>
+        </section>
+      </div>
+    </div>
+    <footer>mcp-home · this page uses only <code>initialize</code>, <code>notifications/initialized</code>, <code>tools/list</code> and <code>tools/call</code></footer>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const KEY = "mcp-home.token";
+  const PROTOCOL = "2025-11-25";
+  const MCP_URL = new URL("/mcp", location.href).href;
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get() { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } },
+    set(v) { try { localStorage.setItem(KEY, v); } catch (e) { /* session only */ } },
+    clear() { try { localStorage.removeItem(KEY); } catch (e) { /* nothing stored */ } },
+  };
+  let token = store.get();
+  let nextId = 1;
+  let negotiated = PROTOCOL;
+  let sessionId = null;
+  let tools = [];
+  let running = false;
+
+  function el(tag, attrs, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v === undefined || v === null || v === false) continue;
+      if (k === "class") n.className = v; else if (k === "text") n.textContent = v; else n.setAttribute(k, v);
+    }
+    for (const kid of kids) if (kid !== null && kid !== undefined) n.append(kid);
+    return n;
+  }
+  function icon(name) {
+    const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    s.setAttribute("class", "ic"); s.setAttribute("aria-hidden", "true");
+    const u = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    u.setAttribute("href", "#i-" + name); s.append(u); return s;
+  }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // MCP over Streamable HTTP --------------------------------------------------------------------------------------
+
+  class HttpError extends Error { constructor(status, text) { super(text); this.status = status; } }
+
+  async function post(message) {
+    const headers = { "Content-Type": "application/json", "Accept": "application/json, text/event-stream",
+                      "Authorization": "Bearer " + token };
+    if (message.method !== "initialize") headers["MCP-Protocol-Version"] = negotiated;
+    if (sessionId) headers["Mcp-Session-Id"] = sessionId;
+    const t0 = performance.now();
+    const res = await fetch(MCP_URL, { method: "POST", headers, body: JSON.stringify(message), cache: "no-store" });
+    const raw = await res.text();
+    const ms = Math.round(performance.now() - t0);
+    if (res.headers.get("mcp-session-id")) sessionId = res.headers.get("mcp-session-id");
+    if (!res.ok && res.status !== 202) throw new HttpError(res.status, raw || res.statusText);
+    let body = null;
+    if (raw) {
+      if ((res.headers.get("content-type") || "").includes("text/event-stream")) {
+        const data = raw.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trim()).filter(Boolean);
+        body = data.length ? JSON.parse(data[data.length - 1]) : null;
+      } else body = JSON.parse(raw);
+    }
+    return { status: res.status, body, ms };
+  }
+
+  async function request(method, params) {
+    const message = { jsonrpc: "2.0", id: nextId++, method, params: params || {} };
+    const r = await post(message);
+    return { request: message, response: r.body, ms: r.ms, status: r.status };
+  }
+
+  async function connect() {
+    setConn("Connecting…", "");
+    $("s-url").textContent = MCP_URL;
+    const init = await request("initialize", {
+      protocolVersion: PROTOCOL, capabilities: {}, clientInfo: { name: "mcp-home-demo", title: "mcp-home MCP client demo", version: "1.0" },
+    });
+    if (init.response.error) throw new Error(init.response.error.message);
+    const result = init.response.result;
+    negotiated = result.protocolVersion;
+    const note = { jsonrpc: "2.0", method: "notifications/initialized" };
+    const sent = await post(note);
+    const list = await request("tools/list", {});
+    tools = list.response.result.tools;
+    $("s-proto").textContent = negotiated + (negotiated === PROTOCOL ? " (negotiated)" : " (asked for " + PROTOCOL + ")");
+    const info = result.serverInfo || {};
+    $("s-server").textContent = (info.title || info.name || "?") + " " + (info.version || "");
+    $("s-init").replaceChildren("initialize ", latencyTag(init.ms), " · tools/list ", latencyTag(list.ms));
+    const wire = $("s-wire-body");
+    wire.replaceChildren(
+      ...wirePair("initialize", init.request, init.response),
+      el("label", { class: "lbl", text: "notifications/initialized → HTTP " + sent.status }), el("pre", { text: JSON.stringify(note, null, 2) }),
+      ...wirePair("tools/list", list.request, summarizeList(list.response)),
+    );
+    renderTools();
+    setConn("Connected · " + negotiated, "on");
+  }
+
+  function summarizeList(resp) {
+    const copy = JSON.parse(JSON.stringify(resp));
+    if (copy.result && copy.result.tools) {
+      copy.result.tools = copy.result.tools.map((t) => ({ name: t.name, annotations: t.annotations, inputSchema: "…" }));
+    }
+    return copy;
+  }
+
+  async function callTool(name, args) {
+    return request("tools/call", { name, arguments: args });
+  }
+
+  // Intent router: a few spoken phrasings → one tool call ---------------------------------------------------------
+
+  const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const iso = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  function spokenDue(text) {
+    const v = text.trim().toLowerCase().replace(/^(on|by|this|next)\s+/, "");
+    const wd = WEEKDAYS.indexOf(v);
+    if (wd >= 0) {
+      const d = new Date(); let add = (wd - d.getDay() + 7) % 7; if (add === 0) add = 7;
+      d.setDate(d.getDate() + add); return iso(d);
+    }
+    return v;
+  }
+  const clean = (s) => s.trim().replace(/^(some|the|a|an|more)\s+/i, "").replace(/[.!?]+$/, "").trim();
+
+  const INTENTS = [
+    [/\bwho\s+lives\s+here|\bhousehold\s+members|\bwho(?:'s| is)\s+in\s+the\s+rotation/i, () => ["household_members", {}]],
+    [/\bwhat\s+do\s+we\s+need\s+to\s+(?:deal\s+with|do)|\bthis\s+week\b|\bbriefing\b|\bwhat(?:'s| is)\s+up\b/i, () => ["weekly_briefing", {}]],
+    [/^(?:alexa,?\s+)?(?:please\s+)?(?:add|put)\s+(.+?)\s+(?:to|on)\s+(?:the\s+|my\s+|our\s+)?(?:shopping\s+|grocery\s+)?list\b/i,
+      (m) => ["add_grocery_item", { item: clean(m[1]) }]],
+    [/\b(?:we(?:'re| are)\s+out\s+of|we\s+need(?:\s+to\s+buy)?|buy)\s+(.+?)[.!?]*$/i, (m) => ["add_grocery_item", { item: clean(m[1]) }]],
+    [/\bwhat(?:'s| is)\s+on\s+(?:the\s+|my\s+|our\s+)?(?:shopping\s+|grocery\s+)?list|\bread\s+(?:me\s+)?the\s+(?:shopping\s+)?list/i, () => ["get_grocery_list", {}]],
+    [/\b(?:i|we)\s+(?:bought|got)\s+(?:the\s+)?(.+?)[.!?]*$|\b(?:check|tick|cross)\s+(?:off\s+)?(.+?)(?:\s+off)?(?:\s+the\s+list)?[.!?]*$/i,
+      (m) => ["check_off_grocery_item", { item: clean(m[1] || m[2]) }]],
+    [/^(?:the\s+)?(.+?)\s+bill\s+(?:of|for)\s+(?:€\s*)?(\d+(?:[.,]\d{1,2})?)\s*(?:euros?|eur|€)?\s+is\s+due\s+(.+?)[.!?]*$/i,
+      (m) => ["add_bill", { provider: clean(m[1]), amount: parseFloat(m[2].replace(",", ".")), due: spokenDue(m[3]) }]],
+    [/\b(?:i|we)\s+(?:paid|have paid|'ve paid)\s+(?:the\s+)?(.+?)\s+bill\b/i, (m) => ["mark_bill_paid", { provider: clean(m[1]) }]],
+    [/\b(?:what|which)\s+bills|\bbills?\s+(?:are\s+)?due|\bdeadlines\b/i, () => ["upcoming_deadlines", { days: 14 }]],
+    [/\bwhose\s+turn(?:\s+is\s+it)?(?:\s+(?:to|for))?(?:\s+(?:take\s+out|do|empty|clean|walk))?(?:\s+the)?\s+([a-z ]+?)[.!?]*$/i,
+      (m) => ["whose_turn", { chore: m[1].trim() }]],
+    [/^(?:alexa,?\s+)?((?!(?:we|i|you|they|who|what|he|she|it)\b)[A-Z][\p{L}'-]+)\s+(?:took\s+out|did|has\s+done|emptied|cleaned|walked|washed)\s+the\s+([a-z ]+?)(?:\s+(today|yesterday|\d+\s+days?\s+ago))?[.!?]*$/iu,
+      (m) => ["log_chore", { chore: m[2].trim(), person: m[1], when: (m[3] || "today").toLowerCase() }]],
+    [/^(?:alexa,?\s+)?(?:add\s+)?((?!(?:we|i|you|they|who|what|he|she|it)\b)[A-Z][\p{L}'-]+)\s+(?:to\s+the\s+household|lives\s+here(?:\s+too)?|moved\s+in)[.!?]*$/iu,
+      (m) => ["add_household_member", { person: m[1] }]],
+    [/\b(?:what(?:'s| is)\s+)?(?:expiring|going\s+off|about\s+to\s+expire)|\beat\s+(?:first|soon)|\bwhat\s+should\s+(?:we|i)\s+eat/i,
+      () => ["pantry_expiring", { days: 3 }]],
+  ];
+
+  function match(t) {
+    for (const [re, build] of INTENTS) {
+      const m = t.match(re);
+      if (m) { const [name, args] = build(m); if (Object.values(args).every((v) => v !== "" && !Number.isNaN(v))) return { name, args }; }
+    }
+    return null;
+  }
+  function route(text) {
+    const t = text.trim().replace(/^alexa,?\s+/i, "");
+    // "We're out of milk and Anna did the dishes": the part after "and" is a request of its own, so the whole
+    // sentence goes to do_from_sentence (Bedrock) instead of one tool swallowing it.
+    const parts = t.split(/\s+and\s+/i);
+    const compound = parts.length > 1 && match(parts[parts.length - 1]) !== null;
+    const hit = compound ? null : match(t);
+    return hit ? { ...hit, routed: true } : { name: "do_from_sentence", args: { sentence: t }, routed: false, compound };
+  }
+
+  // Turning tool results into what Alexa would say -----------------------------------------------------------------
+
+  const plural = (n, one, many) => n + " " + (n === 1 ? one : (many || one + "s"));
+  const euro = (n) => Number(n).toFixed(2).replace(/\.00$/, "") + " euro";
+  function sayDate(isoDate) {
+    const [y, m, d] = isoDate.split("-").map(Number);
+    const date = new Date(y, m - 1, d); const today = new Date(); today.setHours(0, 0, 0, 0);
+    const diff = Math.round((date - today) / 86400000);
+    if (diff === 0) return "today"; if (diff === 1) return "tomorrow"; if (diff === -1) return "yesterday";
+    return date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  }
+  const CHORE_VERBS = { trash: "take out the trash", rubbish: "take out the rubbish", recycling: "take out the recycling",
+                        dog: "walk the dog", plants: "water the plants", bathroom: "clean the bathroom" };
+  const choreVerb = (c) => CHORE_VERBS[c] || "do the " + c;
+  const list = (xs) => xs.length <= 1 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1];
+
+  function speak(name, r) {
+    switch (name) {
+      case "add_grocery_item":
+        return r.status === "already_on_list" ? `${r.item} is already on the shopping list.` : `Added ${r.item} to the shopping list, in the ${r.aisle} aisle.`;
+      case "get_grocery_list": {
+        if (!r.count) return "The shopping list is empty.";
+        const items = Object.values(r.by_aisle).flat();
+        return `There ${r.count === 1 ? "is" : "are"} ${plural(r.count, "thing")} on the list: ${list(items)}.`;
+      }
+      case "check_off_grocery_item":
+        return r.status === "checked_off" ? `Checked ${r.item} off the list.` : `I couldn't find ${r.item} on the list.`;
+      case "add_bill":
+        return `Got it: the ${r.provider} bill, ${euro(r.amount)}, due ${sayDate(r.due_date)}${r.repeat ? ", repeating " + r.repeat : ""}.`;
+      case "mark_bill_paid":
+        if (r.status !== "paid") return `I couldn't find an open ${r.provider} bill.`;
+        return `Marked the ${r.provider} bill of ${euro(r.amount)} as paid.` + (r.next_due ? ` The next one is due ${sayDate(r.next_due)}.` : "");
+      case "upcoming_deadlines": {
+        if (!r.bills.length) return `No bills are due in the next ${r.days} days.`;
+        const parts = r.bills.map((b) => `${b.provider}, ${euro(b.amount)}, ${b.overdue ? "overdue since " : "due "}${sayDate(b.due_date)}`);
+        return `${plural(r.bills.length, "bill")} for ${euro(r.total)}: ${list(parts)}.`;
+      }
+      case "log_chore":
+        return `Noted: ${r.person} did the ${r.chore} ${sayDate(r.date)}. I'll keep the rotation fair.`;
+      case "whose_turn":
+        return r.message || `It's ${r.next}'s turn to ${choreVerb(r.chore)}.`;
+      case "household_members":
+        return r.count ? `${list(r.members)} ${r.count === 1 ? "lives" : "live"} here.` : "Nobody is in the household yet.";
+      case "add_household_member":
+        return r.status === "added" ? `Welcome, ${r.person}. ${r.person} is now in the chore rotation.` : `${r.person} is already in the household.`;
+      case "remove_household_member":
+        return r.status === "removed" ? `${r.person} is out of the chore rotation.` : `${r.person} wasn't in the household.`;
+      case "add_pantry_item":
+        return `Tracking ${r.item}, it expires ${sayDate(r.expires_on)}.`;
+      case "mark_pantry_used":
+        return r.status === "used" ? `Marked ${r.item} as used.` : `I couldn't find ${r.item} in the pantry.`;
+      case "pantry_expiring":
+        return r.items.length ? `Use soon: ${list(r.items.map((i) => i.item + (i.expired ? " (already expired)" : ", " + sayDate(i.expires_on))))}.` : "Nothing is about to expire.";
+      case "weekly_briefing":
+        return r.speech;
+      case "do_from_sentence": {
+        // Each action's result has the shape of the tool that ran it.
+        const said = r.actions.filter((a) => !["error", "skipped"].includes(a.status)).map((a) =>
+          a.aisle ? speak("add_grocery_item", a) : a.provider ? speak("add_bill", a)
+            : a.chore ? speak("log_chore", a) : a.expires_on ? speak("add_pantry_item", a) : "");
+        return said.filter(Boolean).join(" ") || "I didn't find anything to do in that sentence.";
+      }
+      default:
+        return JSON.stringify(r);
+    }
+  }
+
+  function resultData(result) {
+    if (result.structuredContent) return result.structuredContent;
+    const text = (result.content || []).filter((c) => c.type === "text").map((c) => c.text).join("\n");
+    try { return JSON.parse(text); } catch (e) { return text; }
+  }
+
+  // Rendering --------------------------------------------------------------------------------------------------------
+
+  function setConn(text, cls) { $("conn-text").textContent = text; $("conn-pill").className = "pill " + (cls || ""); }
+  function latencyTag(ms) {
+    const fast = ms < 500;
+    return el("span", { class: "tag " + (fast ? "fast" : "slow"), title: fast ? "Under the 500 ms Alexa+ asks for" : "Over the 500 ms Alexa+ asks for", text: ms + " ms" });
+  }
+  function wirePair(label, req, resp) {
+    return [el("label", { class: "lbl", text: label + " request" }), el("pre", { text: JSON.stringify(req, null, 2) }),
+            el("label", { class: "lbl", text: label + " response" }), el("pre", { text: JSON.stringify(resp, null, 2) })];
+  }
+  function renderTools() {
+    const ro = tools.filter((t) => t.annotations && t.annotations.readOnlyHint).length;
+    $("tools-meta").textContent = `${tools.length} tools · ${ro} read only`;
+    $("tools").replaceChildren(...tools.map((t) => el("li", {},
+      el("div", { class: "t" }, el("div", { class: "name", text: t.name }), el("div", { class: "desc", text: t.description || "" })),
+      t.annotations && t.annotations.readOnlyHint ? el("span", { class: "tag ro", title: "readOnlyHint: safe to call without asking", text: "read only" }) : null,
+    )));
+  }
+
+  let speakEnabled = "speechSynthesis" in window;
+  function sayAloud(text) {
+    if (!speakEnabled || !text) return Promise.resolve();
+    return new Promise((resolve) => {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text); u.lang = "en-US";
+      const done = () => resolve(); u.onend = done; u.onerror = done;
+      setTimeout(done, 400 + text.length * 90);
+      speechSynthesis.speak(u);
+    });
+  }
+
+  function addTurn(text) {
+    $("turns-empty").hidden = true;
+    const spoken = el("p", { class: "spoken pending", text: "…" });
+    const meta = el("div", { class: "meta-row" });
+    const wire = el("details", { class: "wire" }, el("summary", {}, icon("chev"), "JSON-RPC request and response"));
+    const li = el("li", { class: "turn" },
+      el("div", { class: "you" }, el("p", { text: text })),
+      el("div", { class: "alexa" }, el("span", { class: "av", "aria-hidden": "true" }, icon("speaker")),
+        el("div", { class: "body" }, el("span", { class: "sr-only", text: "Alexa says:" }), spoken, meta, wire)));
+    $("turns").prepend(li);
+    return { spoken, meta, wire };
+  }
+
+  async function ask(text) {
+    const { name, args, routed, compound } = route(text);
+    const ui = addTurn(text);
+    let reply = "";
+    try {
+      const r = await callTool(name, args);
+      const result = r.response.result;
+      const err = r.response.error;
+      ui.meta.append(el("span", { class: "tag tool", text: name }), latencyTag(r.ms));
+      if (err || !result) {
+        reply = "The server answered with an error: " + (err ? err.message : "no result");
+        ui.spoken.className = "spoken err";
+      } else if (result.isError) {
+        const msg = resultData(result);
+        const bedrock = typeof msg === "string" && /bedrock/i.test(msg);
+        reply = routed || !bedrock ? String(msg)
+          : (compound ? "That asks for several things at once. " : "I didn't recognise that phrasing. ")
+            + "Free-form sentences go to do_from_sentence, which needs Amazon Bedrock (set BEDROCK_MODEL_ID on the server).";
+        ui.spoken.className = "spoken err";
+      } else {
+        reply = speak(name, resultData(result));
+        ui.spoken.className = "spoken";
+      }
+      ui.spoken.textContent = reply;
+      $("s-last").replaceChildren(name + " ", latencyTag(r.ms));
+      ui.wire.append(el("div", { class: "wire-grid" }, ...wirePair("tools/call", r.request, r.response)));
+      if (speakEnabled) {
+        const b = el("button", { class: "btn small", type: "button", "aria-label": "Read the reply aloud" }, icon("speaker"), "Read aloud");
+        b.addEventListener("click", () => sayAloud(reply));
+        ui.meta.append(b);
+      }
+    } catch (e) {
+      reply = e.status === 401 ? "The household token was refused (401). Sign in again." : "Could not reach the MCP server: " + e.message;
+      ui.spoken.className = "spoken err"; ui.spoken.textContent = reply;
+      if (e.status === 401) { store.clear(); setConn("Not authorised", "bad"); }
+    }
+    return reply;
+  }
+
+  // Wiring ----------------------------------------------------------------------------------------------------------
+
+  const SUGGESTIONS = [
+    "Add oat milk to the shopping list",
+    "The gas bill of 80 euro is due Friday",
+    "Whose turn is it to take out the trash?",
+    "What do we need to deal with this week?",
+    "What's on the shopping list?",
+    "What's about to expire?",
+  ];
+  const SCRIPT = [
+    "Add oat milk to the shopping list",
+    "The gas bill of 80 euro is due Friday",
+    "Add Marco to the household",
+    "Anna took out the trash yesterday",
+    "Whose turn is it to take out the trash?",
+    "What do we need to deal with this week?",
+  ];
+
+  $("chips").replaceChildren(...SUGGESTIONS.map((s) => {
+    const b = el("button", { class: "chip", type: "button", text: s });
+    b.addEventListener("click", () => { $("say").value = s; submit(); });
+    return b;
+  }));
+
+  async function submit() {
+    const text = $("say").value.trim();
+    if (!text || running) return;
+    running = true; $("say-btn").disabled = true;
+    try {
+      const reply = await ask(text);
+      $("say").value = "";
+      if ($("auto-speak").checked) await sayAloud(reply);
+    } finally { running = false; $("say-btn").disabled = false; $("say").focus(); }
+  }
+  $("say-form").addEventListener("submit", (e) => { e.preventDefault(); submit(); });
+
+  let scriptStop = false;
+  $("script-btn").addEventListener("click", async () => {
+    const btn = $("script-btn");
+    if (btn.dataset.running) { scriptStop = true; return; }
+    if (running) return;
+    btn.dataset.running = "1"; scriptStop = false;
+    btn.replaceChildren(icon("stop"), el("span", { text: "Stop" }));
+    running = true; $("say-btn").disabled = true;
+    try {
+      for (let i = 0; i < SCRIPT.length && !scriptStop; i++) {
+        $("script-hint").textContent = `Step ${i + 1} of ${SCRIPT.length}`;
+        const line = SCRIPT[i];
+        $("say").value = "";
+        for (const ch of line) { if (scriptStop) break; $("say").value += ch; await sleep(22); }
+        await sleep(350);
+        const reply = await ask(line);
+        $("say").value = "";
+        if ($("auto-speak").checked) await sayAloud(reply);
+        await sleep(1400);
+      }
+    } finally {
+      delete btn.dataset.running; running = false; $("say-btn").disabled = false;
+      btn.replaceChildren(icon("play"), el("span", { text: "Run demo script" }));
+      $("script-hint").textContent = scriptStop ? "Stopped." : "Plays six requests with pauses, for recording.";
+    }
+  });
+
+  $("clear").addEventListener("click", () => { $("turns").replaceChildren(); $("turns-empty").hidden = false; });
+  $("reconnect").addEventListener("click", () => start());
+  if (!speakEnabled) $("auto-speak").closest("label").hidden = true;
+
+  async function start() {
+    try {
+      await connect();
+      $("login").hidden = true; $("app").hidden = false;
+      return true;
+    } catch (e) {
+      setConn(e.status === 401 ? "Not authorised" : "Offline", "bad");
+      if (e.status === 401) { store.clear(); token = ""; showLogin("That token was refused by /mcp (401)."); }
+      else { $("app").hidden = false; $("tools").replaceChildren(el("li", { class: "empty", text: "Could not reach /mcp: " + e.message })); }
+      return false;
+    }
+  }
+  function showLogin(msg) {
+    $("app").hidden = true; $("login").hidden = false;
+    $("login-err").textContent = msg || ""; $("token-input").focus();
+  }
+  $("login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    token = $("token-input").value.trim();
+    if (!token) return;
+    $("login-err").textContent = "";
+    if (await start()) store.set(token);
+  });
+
+  const params = new URLSearchParams(location.search);
+  if (params.has("speak")) $("auto-speak").checked = true;
+  if (token) start(); else showLogin("");
+})();
+</script>
+</body>
+</html>

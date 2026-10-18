@@ -170,7 +170,10 @@ def do_from_sentence(sentence: str) -> dict:
     """Turn a free-form sentence ('we're out of milk and the gas bill of 80 euro is due Friday') into actions
     and run them. Uses Amazon Bedrock when configured."""
     hh = household()
-    actions = plan_from_sentence(sentence)
+    try:
+        actions = plan_from_sentence(sentence)
+    except ValueError as exc:  # e.g. Bedrock not configured: say so instead of a generic tool failure
+        raise ToolError(str(exc)) from exc
     runners = {
         "add_grocery_item": lambda a: logic.add_grocery(hh, a["item"], a.get("quantity", "")),
         "add_bill": lambda a: logic.add_bill(hh, a["provider"], float(a["amount"]), a["due"], repeat=a.get("repeat", "")),

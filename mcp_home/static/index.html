@@ -95,6 +95,7 @@ code, .mono { font-family: var(--mono); font-size: .86em; }
   border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text);
   font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s;
 }
+a.btn { text-decoration: none; }
 .btn:hover { background: var(--surface-2); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .btn.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
@@ -325,6 +326,7 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
       <span class="hh">Household <b id="hh-name"></b></span>
       <span class="date" id="today"></span>
       <span class="spacer"></span>
+      <a class="btn ghost small hide-sm" href="/demo" aria-label="Try the MCP client demo"><svg class="ic"><use href="#i-speaker"/></svg><span>Try it</span></a>
       <button class="btn ghost small hide-sm" id="refresh" type="button" aria-label="Refresh"><svg class="ic"><use href="#i-refresh"/></svg><span>Refresh</span></button>
       <button class="btn ghost small hide-sm" id="signout" type="button" aria-label="Sign out"><svg class="ic"><use href="#i-out"/></svg><span>Sign out</span></button>
     </header>
@@ -462,8 +464,10 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
               <li>Add the header <code>Authorization</code> with value <code>Bearer <span class="secret"></span></code></li>
               <li>Connect, then <b>List Tools</b> and call <code>weekly_briefing</code>: it returns the sentence above.</li>
             </ol>
+            <label class="lbl">Try it in the browser</label>
+            <p class="note" style="margin-top:0">The <a href="/demo">MCP client demo</a> talks to this endpoint the way Alexa+ would: <code>initialize</code>, <code>tools/list</code> and <code>tools/call</code> over Streamable HTTP, with the reply Alexa would speak and the time of each call.</p>
             <label class="lbl">Alexa+</label>
-            <p class="note" style="margin-top:0">Register the endpoint as a remote MCP server following the Alexa+ MCP instructions for the Build, Ship, Shape hackathon, with this household token as the bearer credential. Everything Alexa adds shows up here within 30 seconds.</p>
+            <p class="note" style="margin-top:0">Alexa+ links the account with OAuth: deploy with <code>PUBLIC_URL</code>, set <code>OAUTH_CLIENT_ID</code>, <code>OAUTH_CLIENT_SECRET</code> and <code>OAUTH_REDIRECT_URIS</code>, and enter this household token on the consent page when linking (README, "Connect to Alexa+"). Everything Alexa adds shows up here within 30 seconds.</p>
           </div>
         </div>
       </section>

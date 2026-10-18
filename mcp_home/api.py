@@ -158,6 +158,11 @@ def register(mcp) -> None:
     async def dashboard(request: Request) -> Response:
         return HTMLResponse((STATIC / "index.html").read_text(encoding="utf-8"), headers=SECURITY_HEADERS)
 
+    @mcp.custom_route("/demo", methods=["GET"], include_in_schema=False)
+    async def demo(request: Request) -> Response:
+        """A real MCP client in the browser: initialize, tools/list and tools/call against /mcp."""
+        return HTMLResponse((STATIC / "demo.html").read_text(encoding="utf-8"), headers=SECURITY_HEADERS)
+
     @mcp.custom_route("/healthz", methods=["GET"], include_in_schema=False)
     async def healthz(request: Request) -> Response:
         return JSONResponse({"status": "ok"})
