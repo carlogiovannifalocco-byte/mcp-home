@@ -85,6 +85,17 @@ label.lbl { display: block; font-size: 12px; font-weight: 600; color: var(--mute
 .say { display: flex; gap: 8px; align-items: stretch; }
 .say .field { min-height: 52px; font-size: 17px; border-radius: 14px; padding: 0 16px; }
 .say .btn { min-height: 52px; border-radius: 14px; padding: 0 20px; font-size: 15px; }
+.say .mic { padding: 0; width: 52px; justify-content: center; }
+.say .mic[aria-pressed="true"] { background: #1c7cf4; border-color: #1c7cf4; color: #fff; }
+/* A light bar that says what the "device" is doing: listening, working, speaking. */
+.ring { height: 4px; margin-top: 10px; border-radius: 4px; background: linear-gradient(90deg, #00c2ff, #3d5afe, #00c2ff); background-size: 200% 100%;
+  opacity: 0; transform: scaleX(.4); transition: opacity 200ms cubic-bezier(.22,1,.36,1), transform 260ms cubic-bezier(.22,1,.36,1); }
+.ring[data-state="listening"] { opacity: 1; transform: scaleX(1); animation: ring-sweep 1.4s linear infinite; }
+.ring[data-state="thinking"] { opacity: .55; transform: scaleX(.7); }
+.ring[data-state="speaking"] { opacity: 1; transform: scaleX(1); }
+@keyframes ring-sweep { from { background-position: 0% 0; } to { background-position: 200% 0; } }
+.heard { color: var(--muted); font-size: 13px; min-height: 18px; margin: 6px 0 0; }
+@media (prefers-reduced-motion: reduce) { .ring { transition: opacity 150ms linear; transform: none !important; } .ring[data-state="listening"] { animation: none; } }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .chip { border: 1px solid var(--hero-border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 6px 12px; font-size: 13.5px; cursor: pointer; }
 .chip:hover { border-color: var(--accent); color: var(--accent-strong); }
@@ -177,6 +188,7 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
   <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></symbol>
   <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></symbol>
   <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></symbol>
   <symbol id="i-send" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></symbol>
   <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6M6 8h12v3a6 6 0 0 1-12 0zM12 17v5"/></symbol>
   <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0 5 5L22 14l-8 8-2.3-2.3a4 4 0 0 0-5-5L2 10l8-8z"/></symbol>
@@ -217,8 +229,11 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
       <form class="say" id="say-form" autocomplete="off">
         <label class="sr-only" for="say">What you would say to Alexa</label>
         <input class="field" id="say" maxlength="300" placeholder="e.g. add oat milk to the shopping list" enterkeyhint="send" required>
+        <button class="btn mic" id="mic-btn" type="button" aria-pressed="false" aria-label="Talk: say it out loud" title="Talk (your browser's speech recognition)" hidden><svg class="ic"><use href="#i-mic"/></svg></button>
         <button class="btn primary" id="say-btn" type="submit"><svg class="ic"><use href="#i-send"/></svg>Ask</button>
       </form>
+      <div class="ring" id="ring" data-state="idle" aria-hidden="true"></div>
+      <p class="heard" id="heard" aria-live="polite"></p>
       <div class="chips" id="chips" aria-label="Try one of these"></div>
       <div class="hero-foot">
         <button class="btn" id="script-btn" type="button"><svg class="ic"><use href="#i-play"/></svg><span>Run demo script</span></button>
@@ -636,15 +651,50 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
     return b;
   }));
 
-  async function submit() {
+  function ring(state) { $("ring").dataset.state = state; }
+
+  async function submit(byVoice = false) {
     const text = $("say").value.trim();
     if (!text || running) return;
     running = true; $("say-btn").disabled = true;
     try {
+      ring("thinking");
       const reply = await ask(text);
       $("say").value = "";
-      if ($("auto-speak").checked) await sayAloud(reply);
-    } finally { running = false; $("say-btn").disabled = false; $("say").focus(); }
+      if (byVoice || $("auto-speak").checked) { ring("speaking"); await sayAloud(reply); }
+    } finally { ring("idle"); running = false; $("say-btn").disabled = false; $("say").focus(); }
+  }
+
+  // Talk instead of typing: the browser's own speech recognition, so the demo feels like a voice device.
+  // Chrome and Edge may send the audio to their vendor's speech service; nothing goes to mcp-home but the text.
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (Recognition) {
+    const mic = $("mic-btn");
+    mic.hidden = false;
+    let rec = null;
+    const stopListening = () => { mic.setAttribute("aria-pressed", "false"); if ($("ring").dataset.state === "listening") ring("idle"); };
+    mic.addEventListener("click", () => {
+      if (rec) { rec.stop(); return; }
+      if (running) return;
+      rec = new Recognition();
+      rec.lang = "en-US"; rec.interimResults = true; rec.maxAlternatives = 1;
+      let finalText = "";
+      rec.onstart = () => { mic.setAttribute("aria-pressed", "true"); ring("listening"); $("heard").textContent = "Listening…"; };
+      rec.onresult = (e) => {
+        let interim = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) finalText += e.results[i][0].transcript; else interim += e.results[i][0].transcript;
+        }
+        $("say").value = (finalText || interim).trim();
+        $("heard").textContent = interim ? "…" + interim : "";
+      };
+      rec.onerror = (e) => { $("heard").textContent = e.error === "not-allowed" ? "Microphone blocked: allow it in the browser to talk." : "I didn't catch that. Try again or type it."; };
+      rec.onend = () => {
+        rec = null; stopListening();
+        if (finalText.trim()) { $("heard").textContent = ""; $("say").value = finalText.trim(); submit(true); }
+      };
+      rec.start();
+    });
   }
   $("say-form").addEventListener("submit", (e) => { e.preventDefault(); submit(); });
 
@@ -663,13 +713,15 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
         $("say").value = "";
         for (const ch of line) { if (scriptStop) break; $("say").value += ch; await sleep(22); }
         await sleep(350);
+        ring("thinking");
         const reply = await ask(line);
         $("say").value = "";
-        if ($("auto-speak").checked) await sayAloud(reply);
+        if ($("auto-speak").checked) { ring("speaking"); await sayAloud(reply); }
+        ring("idle");
         await sleep(1400);
       }
     } finally {
-      delete btn.dataset.running; running = false; $("say-btn").disabled = false;
+      ring("idle"); delete btn.dataset.running; running = false; $("say-btn").disabled = false;
       btn.replaceChildren(icon("play"), el("span", { text: "Run demo script" }));
       $("script-hint").textContent = scriptStop ? "Stopped." : "Plays eight requests with pauses, for recording.";
     }
