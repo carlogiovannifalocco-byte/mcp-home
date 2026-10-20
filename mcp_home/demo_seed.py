@@ -22,7 +22,7 @@ def seed(household: str, today: date | None = None) -> None:
         logic.add_member(household, person)
 
     for item, qty, who in [
-        ("oat milk", "2", "Anna"), ("eggs", "12", "Ben"), ("coffee beans", "", "Dev"),
+        ("pasta", "2", "Anna"), ("eggs", "12", "Ben"), ("coffee beans", "", "Dev"),
         ("bananas", "6", "Chiara"), ("dish soap", "", "Ben"), ("tomatoes", "1 kg", "Anna"),
     ]:
         logic.add_grocery(household, item, qty, who)
