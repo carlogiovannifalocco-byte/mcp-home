@@ -218,6 +218,23 @@ ul.list { list-style: none; margin: 0; padding: 0; }
 .member button { width: 24px; height: 24px; border-radius: 50%; border: 0; background: transparent; color: var(--faint); cursor: pointer; display: grid; place-items: center; padding: 0; }
 .member button:hover { background: var(--surface-3); color: var(--danger); }
 .member button .ic { width: 13px; height: 13px; }
+.member button { position: relative; }
+.member button::before { content: ""; position: absolute; inset: -10px; }
+/* Phones: a sticky row of section links, so the long single column is one tap from anywhere. */
+.jump { display: none; }
+@media (max-width: 860px) {
+  .jump { display: flex; gap: 6px; overflow-x: auto; position: sticky; top: 0; z-index: 5; margin: 0 -16px 14px; padding: 8px 16px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); scrollbar-width: none; }
+  .jump::-webkit-scrollbar { display: none; }
+  .jump a { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .jump a b { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 600; }
+  .card-h h2 { scroll-margin-top: 72px; }
+}
+@media (pointer: coarse) {
+  .btn.small { min-height: 44px; }
+  .member-form .field { min-height: 44px; }
+}
 .sub-h { font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 16px 0 6px; }
 .member-form { display: inline-flex; gap: 6px; }
 .member-form .field { width: 150px; min-height: 34px; border-radius: 999px; font-size: 13.5px; }
@@ -344,6 +361,14 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
         </div>
       </div>
     </section>
+
+    <nav class="jump" aria-label="Sections">
+      <a href="#shop-h">List <b id="j-shop"></b></a>
+      <a href="#bills-h">Bills <b id="j-bills"></b></a>
+      <a href="#chores-h">Chores</a>
+      <a href="#pantry-h">Pantry <b id="j-pantry"></b></a>
+      <a href="#connect-h">Connect</a>
+    </nav>
 
     <main class="grid">
       <div class="col">
@@ -602,7 +627,7 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
   }
 
   function renderShopping() {
-    $("shop-count").textContent = S.groceries.length;
+    $("shop-count").textContent = S.groceries.length; $("j-shop").textContent = S.groceries.length || "";
     const box = $("shop-list");
     if (!S.groceries.length) { box.replaceChildren(h("p", { class: "empty" }, "The list is empty. Add something here or say \"Alexa, add milk to the shopping list\".")); return; }
     const groups = new Map();
@@ -636,7 +661,7 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
   }
   function renderBills() {
     const bills = S.bills.bills;
-    $("bills-count").textContent = bills.length;
+    $("bills-count").textContent = bills.length; $("j-bills").textContent = bills.length || "";
     const overdue = bills.filter((b) => b.overdue);
     $("bills-total").replaceChildren(bills.length ? h("div", { class: "total-line" },
       h("span", null, overdue.length ? h("span", { class: "bad" }, overdue.length + " overdue · ") : null, plural(bills.length, "unpaid bill")),
@@ -699,7 +724,7 @@ footer { margin-top: 28px; text-align: center; color: var(--faint); font-size: 1
     return h("span", { class: "badge ok" }, "In " + d + " days");
   }
   function renderPantry() {
-    $("pantry-count").textContent = S.pantry.length;
+    $("pantry-count").textContent = S.pantry.length; $("j-pantry").textContent = S.pantry.length || "";
     if (!S.pantry.length) { $("pantry-list").replaceChildren(h("li", { class: "empty" }, "Nothing tracked. Add food with its expiry date so Alexa can remind you.")); return; }
     $("pantry-list").replaceChildren(...S.pantry.map((p) => {
       const btn = h("button", { class: "btn small", type: "button", "aria-label": "Mark " + p.item + " as used" }, "Used");
