@@ -13,7 +13,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 
-from . import api, logic, oauth, speech
+from . import api, demo_seed, logic, oauth, speech
 from .nl import plan_from_sentence
 
 # RENDER_EXTERNAL_URL is set by Render itself, so a Blueprint deploy works without knowing its URL in advance.
@@ -343,6 +343,9 @@ class Without401Challenge:
 
 
 api.register(mcp)
+# The public demo household starts lived-in (made-up family), so a visitor or a judge has something to ask about.
+if oauth.demo_token():
+    demo_seed.seed_if_empty(oauth.DEMO_HOUSEHOLD)
 app = mcp.streamable_http_app(stateless_http=True, json_response=True, transport_security=transport_security())
 # The OAuth routes go first so our protected-resource metadata (with scopes_supported) wins over the SDK's default.
 app.router.routes[0:0] = auth_server.routes()
